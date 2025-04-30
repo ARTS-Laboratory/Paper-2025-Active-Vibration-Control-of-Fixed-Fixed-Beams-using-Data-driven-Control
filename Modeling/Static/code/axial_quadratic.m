@@ -2,7 +2,7 @@
 clear; clc; close all;
 
 % modified Beam Formulation with Axial DOF
-% nElem = 50;                 % number of elements
+nElem = 50;                 % number of elements
 E = 210e9;                    % Young's modulus (Pa)
 A = 0.01;                     % cross-sectional area (m^2)
 I = 8.333e-6;                 % moment of inertia (m^4)
