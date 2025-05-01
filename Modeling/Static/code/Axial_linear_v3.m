@@ -92,12 +92,12 @@ omega2 = diag(D);
 Modes = Modes(:,sortIdx);
 freq = sqrt(omega2)/(2*pi);
 
-%  first 5 natural frequencies
+%  dominant natural frequencies
 nModesToShow = 4;
 disp('First 4 natural frequencies (Hz):');
 disp(freq(1:nModesToShow));
 
-% plot first 3 mode shapes
+% dominant mode shapes
 figure;
 for j = 1:nModesToShow
     mode_full = zeros(nDOF,1);
