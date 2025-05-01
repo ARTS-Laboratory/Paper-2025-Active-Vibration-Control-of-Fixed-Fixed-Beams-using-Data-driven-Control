@@ -1,9 +1,9 @@
-% modified Beam Formulation with Axial DOF (fixed–fixed under mid-span moment)
+
 % including consistent mass matrix assembly and modal analysis
 
 clear; clc; close all;
 
-%% input parameters
+% input parameters
 nElem = 50;              % number of elements
 E     = 210e9;           % Young's modulus (Pa)
 A     = 0.01;            % cross-sectional area (m^2)
@@ -35,7 +35,7 @@ bending_dofs = [2 3 5 6];
 ke(axial_dofs,   axial_dofs)   = ke_axial;
 ke(bending_dofs, bending_dofs) = ke_bending;
 
-%% element mass (consistent)
+%% element mass 
 me_axial = (rho*A*Le/6)*[2 1; 1 2];
 me_bending = (rho*A*Le/420)*[ ...
     156       22*Le    54      -13*Le;
@@ -85,19 +85,19 @@ title('Static deflection of modified Euler–Bernoulli beam');
 legend('Deflection');
 
 %% modal analysis
-% solve generalized eigenvalue problem K x = omega^2 M x
+% generalized eigenvalue problem K x = omega^2 M x
 [Modes, D] = eig(K_reduced, M_reduced);
 omega2 = diag(D);
 [omega2, sortIdx] = sort(omega2);
 Modes = Modes(:,sortIdx);
 freq = sqrt(omega2)/(2*pi);
 
-% display first 5 natural frequencies
+%  first 5 natural frequencies
 nModesToShow = 4;
 disp('First 5 natural frequencies (Hz):');
 disp(freq(1:nModesToShow));
 
-% plot first 3 mode shapes (vertical deflection)
+% plot first 3 mode shapes
 figure;
 for j = 1:nModesToShow
     mode_full = zeros(nDOF,1);
