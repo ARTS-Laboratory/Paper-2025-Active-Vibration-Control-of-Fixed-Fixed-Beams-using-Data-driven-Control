@@ -236,12 +236,84 @@
 		\end{pmatrix}.
 	\end{equation}
 	
-	\section*{Equation of Motion and Time Integration}
+	\section{Equation of Motion and Time Integration}
 	
-	The discretized equation of motion is:
-	\begin{equation}
-		M \ddot{W} + C \dot{W} + K W = F(t),
+	% -------------------------------------------------------------------
+	% Before the equation: introduce and define all terms
+	% -------------------------------------------------------------------
+	The global equation of motion for the discretized beam—assembled from all element mass, damping, and stiffness contributions—can be written in matrix form as
+	
+	\begin{equation}\label{eq:global_expanded}
+		\underbrace{\begin{bmatrix}
+				m_{11} & m_{12} & \cdots & m_{1n}\\
+				m_{21} & m_{22} & \cdots & m_{2n}\\
+				\vdots & \vdots & \ddots & \vdots\\
+				m_{n1} & m_{n2} & \cdots & m_{nn}
+		\end{bmatrix}}_{M}
+		\,
+		\underbrace{\begin{bmatrix}
+				\ddot u_1\\[4pt]
+				\ddot w_1\\[4pt]
+				\ddot \theta_1 \\[2pt]
+				\vdots \\[2pt]
+				\ddot \theta_N
+		\end{bmatrix}}_{\ddot W}
+		\;+\;
+		\underbrace{\begin{bmatrix}
+				c_{11} & c_{12} & \cdots & c_{1n}\\
+				c_{21} & c_{22} & \cdots & c_{2n}\\
+				\vdots & \vdots & \ddots & \vdots\\
+				c_{n1} & c_{n2} & \cdots & c_{nn}
+		\end{bmatrix}}_{C}
+		\,
+		\underbrace{\begin{bmatrix}
+				\dot u_1\\[4pt]
+				\dot w_1\\[4pt]
+				\dot \theta_1 \\[2pt]
+				\vdots \\[2pt]
+				\dot \theta_N
+		\end{bmatrix}}_{\dot W}
+		\;+\;
+		\underbrace{\begin{bmatrix}
+				k_{11} & k_{12} & \cdots & k_{1n}\\
+				k_{21} & k_{22} & \cdots & k_{2n}\\
+				\vdots & \vdots & \ddots & \vdots\\
+				k_{n1} & k_{n2} & \cdots & k_{nn}
+		\end{bmatrix}}_{K}
+		\,
+		\underbrace{\begin{bmatrix}
+				u_1\\[4pt]
+				w_1\\[4pt]
+				\theta_1 \\[2pt]
+				\vdots \\[2pt]
+				\theta_N
+		\end{bmatrix}}_{W}
+		=
+		\underbrace{\begin{bmatrix}
+				F_1(t)\\[4pt]
+				F_2(t)\\[4pt]
+				F_3(t) \\[2pt]
+				\vdots \\[2pt]
+				F_n(t)
+		\end{bmatrix}}_{F(t)}.
 	\end{equation}
+	
+	% -------------------------------------------------------------------
+	% After the equation: detailed description of each quantity
+	% -------------------------------------------------------------------
+	Here:
+	\begin{itemize}
+		\item \(W = [\,u_1,\;w_1,\;\theta_1,\;\dots,\;u_N,\;w_N,\;\theta_N\,]^T\) collects all \(3N\) nodal degrees of freedom: 
+		\(u_i\) (axial displacement), \(w_i\) (transverse displacement), and \(\theta_i\) (slope) at node \(i\).
+		\item \(\ddot W\) and \(\dot W\) are the corresponding acceleration and velocity vectors.
+		\item \(M = [m_{ij}]\) is the global mass matrix, assembled from each element’s consistent mass blocks (Eqs.~\eqref{eq:me_axial} and \eqref{eq:me_bending}).
+		\item \(C = [c_{ij}]\) is the global damping matrix (e.g.\ Rayleigh damping \(C=\alpha M + \beta K\)).
+		\item \(K = [k_{ij}]\) is the global stiffness matrix, assembled from each element’s axial and bending stiffness (Eqs.~\eqref{eq:ke_axial}–\eqref{eq:ke_bending}).
+		\item \(F(t) = [F_1(t),F_2(t),\dots,F_n(t)]^T\) is the vector of external (or control) forces and moments applied at each DOF.
+	\end{itemize}
+	
+	Equation~\eqref{eq:global_expanded} succinctly represents the dynamic equilibrium of the entire beam structure in its finite‐element discretization.
+	
 	where the damping matrix is given by
 	\begin{equation}
 		C = \alpha M + \beta K.
