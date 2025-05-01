@@ -94,7 +94,7 @@ freq = sqrt(omega2)/(2*pi);
 
 %  first 5 natural frequencies
 nModesToShow = 4;
-disp('First 5 natural frequencies (Hz):');
+disp('First 4 natural frequencies (Hz):');
 disp(freq(1:nModesToShow));
 
 % plot first 3 mode shapes
@@ -105,8 +105,8 @@ for j = 1:nModesToShow
     vmode = mode_full(2:nDOF_per_node:end);
     subplot(nModesToShow,1,j);
     plot(x_nodes, vmode, '-o','LineWidth',1.5);
-    ylabel(sprintf('Mode %d',j));
+    ylabel(sprintf('mode %d',j));
     grid on;
-    if j==1, title('First three vertical mode shapes'); end
-    if j==3, xlabel('Beam length (m)'); end
+    if j==1, title('First four mode shapes'); end
+    if j==3, xlabel('beam length (m)'); end
 end

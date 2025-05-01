@@ -1,24 +1,15 @@
-\documentclass{article}
-\usepackage{amsmath, amssymb, amsfonts, bm}
+\documentclass[preprint,12pt]{elsarticle}
+\usepackage{amsmath,amssymb}
 \usepackage{geometry}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta}
-\usepackage{float}	
-\usepackage{graphicx}
-\usepackage[colorlinks=true, allcolors=blue]{hyperref}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
-\usepackage{caption}
-\geometry{a4paper, margin=1in}
+\geometry{margin=1in}
 
 \begin{document}
 	
-	\title{Finite Element Formulation of the Extended Euler-Bernoulli Beam with Axial Forces}
-	\author{}
-	\date{}
-	\maketitle
+	\begin{frontmatter}
+		\title{Extended Euler--Bernoulli Beam with Axial DOF:\\
+			Strong, Weak, and Discrete Formulations}
+	\end{frontmatter}
 	
-	\section*{Governing Equation}
 	\section*{Nomenclature}
 	\begin{tabular}{p{2cm} p{1cm} p{11cm}}
 		$E$           & [Pa]    & Young’s modulus (steel: $2.1\times10^{11}$).\\
@@ -56,16 +47,6 @@
 		= q(x,t).
 	\end{equation}
 	
-	An example of beam under analysis is shown in Figure~\ref{fig:FFB}. The beam is fixed at both ends and loaded transversely at its center by a point force \(P\), resulting in internal axial forces \(N_A\), \(N_B\), bending moments \(M_A\), \(M_B\), and vertical reaction forces \(F_A\), \(F_B\).
-	\begin{figure}[H]
-		\centering
-		\includegraphics[width=4.7in]{Figures/FFB_Figure.png}
-		\caption[FFB]{\label{fig:FFB} 
-			Free body diagram of a fixed-fixed beam subjected to a transverse point load.}
-	\end{figure} 
-	
-	\textbf{Explanation for Trotter:} This is the main rule that tells us how the beam bends and moves when a force is applied.
-	
 	\section{Weak Form}
 	To reduce the continuity requirements on trial and test spaces and to impose natural boundary conditions, we derive the variational form by multiplying each strong equation by its virtual displacement and integrating by parts.
 	
@@ -96,6 +77,7 @@
 		\qquad
 		u(x)=\bigl[N^{(u)}(x)\bigr]^T(u_1,u_2)^T.
 	\end{equation}
+	Because \(dN^{(u)}/dx=[-1/L_e,\;1/L_e]^T\) is constant, the axial strain is uniform, simplifying the stiffness integral.
 	
 	\subsection{Transverse (Hermite cubic)}
 	To capture bending curvature with \(C^1\) continuity, we use four cubic polynomials:
@@ -116,9 +98,10 @@
 			N_4(\xi)=L_e\,\xi(-\xi+\xi^2).
 		\end{aligned}
 	\end{equation}
+	Then \(w(x)=N^{(w)}(\xi)\,(w_1,\theta_1,w_2,\theta_2)^T\).
 	
 	\section{Element Stiffness Matrices}
-	Substituting the above interpolations into the weak forms (\ref{eq:axial_weak})–(\ref{eq:bending_weak}) and evaluating the resulting integrals yields:
+	Substituting the above interpolations into the weak forms (\ref{eq:axial_weak})--(\ref{eq:bending_weak}) and evaluating the resulting integrals yields:
 	
 	\subsection{Axial}
 	By inserting \(u(x)\) from \eqref{eq:axial_interp} into \eqref{eq:axial_weak} and noting the constant derivative,
@@ -128,6 +111,7 @@
 		= \frac{EA}{L_e}
 		\begin{pmatrix}1 & -1\\ -1 & 1\end{pmatrix}.
 	\end{equation}
+	This 2×2 block arises directly from the axial strain energy.
 	
 	\subsection{Bending}
 	From the bending weak form \eqref{eq:bending_weak}, define the curvature–shape vector in \(\xi\):
@@ -148,6 +132,7 @@
 			6L_e & 2L_e^2 & -6L_e & 4L_e^2
 		\end{pmatrix}.
 	\end{equation}
+	This 4×4 block represents the bending stiffness derived from curvature energy \(\tfrac12\int EI\,w''^2dx\).
 	
 	\subsection{Assembled stiffness}
 	Finally, the full 6×6 element stiffness matrix is
@@ -160,32 +145,33 @@
 	\end{equation}
 	
 	\section{Element Mass Matrices}
-	The element mass matrix comes from the beam’s kinetic energy:
-	\begin{equation}
-		T
-		= \tfrac12\int_0^{L_e}\rho A\,\dot u^2(x,t)\,dx
-		+\tfrac12\int_0^{L_e}\rho A\,\dot w^2(x,t)\,dx.
-	\end{equation}
+	The element mass matrix comes from the beam’s kinetic energy,
+	\[
+	T
+	= \tfrac12\int_0^{L_e}\rho A\,\dot u^2(x,t)\,dx
+	\;+\;
+	\tfrac12\int_0^{L_e}\rho A\,\dot w^2(x,t)\,dx.
+	\]
 	
 	\subsection{Axial}
 	We start with the axial kinetic energy
-	\begin{equation}
-		T_{\mathrm{axial}}
-		= \tfrac12\int_0^{L_e}\rho A\,\dot u^2\,dx.
-	\end{equation}
+	\[
+	T_{\mathrm{axial}}
+	= \tfrac12\int_0^{L_e}\rho A\,\dot u^2\,dx.
+	\]
 	Substitute the linear interpolation \eqref{eq:axial_interp}:
-	\begin{equation}
-		\dot u(x,t)
-		= \bigl[N^{(u)}(x)\bigr]^T\,\dot{\mathbf{u}},
-	\end{equation}
+	\[
+	\dot u(x,t)
+	= \bigl[N^{(u)}(x)\bigr]^T\,\dot{\mathbf{u}},
+	\]
 	which gives
-	\begin{equation}
-		T_{\mathrm{axial}}
-		= \tfrac12\,\dot{\mathbf{u}}^T
-		\Bigl[\int_0^{L_e}\rho A\,N^{(u)}N^{(u)T}\,dx\Bigr]
-		\,\dot{\mathbf{u}}
-		= \tfrac12\,\dot{\mathbf{u}}^T\,m_e^{(\mathrm{axial})}\,\dot{\mathbf{u}}.
-	\end{equation}
+	\[
+	T_{\mathrm{axial}}
+	= \tfrac12\,\dot{\mathbf{u}}^T
+	\Bigl[\int_0^{L_e}\rho A\,N^{(u)}\,N^{(u)T}\,dx\Bigr]
+	\,\dot{\mathbf{u}}
+	= \tfrac12\,\dot{\mathbf{u}}^T\,m_e^{(\mathrm{axial})}\,\dot{\mathbf{u}}.
+	\]
 	Hence the consistent axial mass block is
 	\begin{equation}\label{eq:me_axial}
 		m_e^{(\mathrm{axial})}
@@ -196,27 +182,27 @@
 	
 	\subsection{Bending}
 	Likewise, for bending
-	\begin{equation}
-		T_{\mathrm{bend}}
-		= \tfrac12\int_0^{L_e}\rho A\,\dot w^2\,dx.
-	\end{equation}
+	\[
+	T_{\mathrm{bend}}
+	= \tfrac12\int_0^{L_e}\rho A\,\dot w^2\,dx.
+	\]
 	Using the Hermite‐cubic interpolation \eqref{eq:cubic_interp}:
-	\begin{equation}
-		\dot w(x,t)
-		= \bigl[N^{(w)}(\xi)\bigr]^T\,\dot{\mathbf{w}},
-	\end{equation}
+	\[
+	\dot w(x,t)
+	= \bigl[N^{(w)}(\xi)\bigr]^T\,\dot{\mathbf{w}},
+	\]
 	we obtain
-	\begin{equation}
-		T_{\mathrm{bend}}
-		= \tfrac12\,\dot{\mathbf{w}}^T
-		\Bigl[\int_0^{L_e}\rho A\,N^{(w)}(\xi)N^{(w)T}(\xi)\,dx\Bigr]
-		\,\dot{\mathbf{w}}
-		= \tfrac12\,\dot{\mathbf{w}}^T\,m_e^{(\mathrm{bending})}\,\dot{\mathbf{w}}.
-	\end{equation}
+	\[
+	T_{\mathrm{bend}}
+	= \tfrac12\,\dot{\mathbf{w}}^T
+	\Bigl[\int_0^{L_e}\rho A\,N^{(w)}(\xi)\,N^{(w)T}(\xi)\,dx\Bigr]
+	\,\dot{\mathbf{w}}
+	= \tfrac12\,\dot{\mathbf{w}}^T\,m_e^{(\mathrm{bending})}\,\dot{\mathbf{w}}.
+	\]
 	Thus the bending mass block is
 	\begin{equation}\label{eq:me_bending}
 		m_e^{(\mathrm{bending})}
-		= \int_0^{L_e}\rho A\,N^{(w)}(\xi)N^{(w)T}(\xi)\,dx
+		= \int_0^{L_e}\rho A\,N^{(w)}(\xi)\,N^{(w)T}(\xi)\,dx
 		= \frac{\rho A L_e}{420}
 		\begin{pmatrix}
 			156 & 22L_e & 54 & -13L_e\\
@@ -236,57 +222,7 @@
 		\end{pmatrix}.
 	\end{equation}
 	
-	\section*{Equation of Motion and Time Integration}
-	
-	The discretized equation of motion is:
-	\begin{equation}
-		M \ddot{W} + C \dot{W} + K W = F(t),
-	\end{equation}
-	where the damping matrix is given by
-	\begin{equation}
-		C = \alpha M + \beta K.
-	\end{equation}
-	
-	Using Newmark–Beta time integration,
-	\begin{equation}
-		W_{n+1} = W_n + \dot{W}_n \Delta t + \tfrac12 \ddot{W}_n \Delta t^2,
-	\end{equation}
-	we solve:
-	\begin{equation}
-		\bigl(K + \tfrac{\gamma}{\beta \Delta t} C + \tfrac{1}{\beta \Delta t^2} M\bigr) W_{n+1}
-		= F_{n+1} + \text{previous terms}.
-	\end{equation}
-	
-	\textbf{Explanation for Trotter:} The beam moves over time, so we use math formulas to predict how it bends at each moment.
-	
-	\section*{Control Force Calculation}
-	Control forces are introduced at selected nodes along the beam to actively influence both axial and bending responses. As shown in Figure~\ref{fig:control_forces}, each actuator applies a concentrated axial force \( F_{\text{control}} \) along the beam axis and induces a moment \( M_{\text{control}} \) by acting off-center relative to the beam’s neutral axis. These control actions are designed to counteract undesirable vibrations or deflections and are computed based on real-time deviations from a desired trajectory or shape.
-	
-	The control force is defined as
-	\begin{equation}
-		F_{\text{control}} = K_{\text{ctrl}} \cdot e(t),
-	\end{equation}
-	where \( K_{\text{ctrl}} \) represents a control gain and \( e(t) \) is the error between the measured and desired beam states. The corresponding moment is defined as
-	\begin{equation}
-		M_{\text{control}} = F_{\text{control}} \cdot \frac{h}{2},
-	\end{equation}
-	where \( h \) is the beam thickness, and the factor \( h/2 \) accounts for the distance from the neutral axis to the surface where the actuator applies the force.
-	
-	In the finite element framework, \( F_{\text{control}} \) is applied to the axial degree of freedom \( u \) at the control node, while \( M_{\text{control}} \) contributes to the rotational degree of freedom \( \theta \) at the same node. These contributions are inserted directly into the global force vector in the positions corresponding to those degrees of freedom.
-	
-	The modified equation of motion, including the control forces and moments, becomes
-	\begin{equation}
-		M \ddot{W} + C \dot{W} + K W = F_{\text{control}}(t),
-	\end{equation}
-	where \( M \), \( C \), and \( K \) are the assembled global mass, damping, and stiffness matrices, and \( F_{\text{control}}(t) \) contains the time-varying control inputs mapped to the appropriate DOFs.
-	
-	\begin{figure}[h!]
-		\centering
-		\includegraphics[width=2.4in]{Figures/ControlForces_Figure.png}
-		\caption{Control force \( F_{\text{control}} \) and generated moment \( M_{\text{control}} \) applied at the control node.}
-		\label{fig:control_forces}
-	\end{figure}
-	
-	\textbf{Explanation for Trotter:} The control force is calculated based on how much the beam is off from where you want it to be. This force is applied at a specific point on the beam, called the control node. Along with this force, a moment is created to control bending. Both are included in the beam’s equations of motion to guide its behavior.
+	\bibliographystyle{elsarticle-num}
+	\bibliography{references}
 	
 \end{document}
