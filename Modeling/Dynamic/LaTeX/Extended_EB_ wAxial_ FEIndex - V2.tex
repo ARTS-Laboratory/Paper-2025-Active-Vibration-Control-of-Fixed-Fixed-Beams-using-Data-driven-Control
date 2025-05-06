@@ -319,104 +319,54 @@
 
 %%% Beginning of the time integration section%%%%%%%%%
 	
-	\subsection*{Newmark--Beta Implicit Time Integration (Step-by-Step)}
+	\subsection*{Newmark--Beta Implicit Time Integration}
 	
-	We solve the second-order equation of motion:
+	The Newmark--Beta method is a widely used implicit time integration scheme for solving second-order systems of the form:
 	\begin{equation}
-		\mathbf{M} \ddot{\mathbf{w}} + \mathbf{C} \dot{\mathbf{w}} + \mathbf{K} \mathbf{w} = \mathbf{f}(t),
+		\mathit{\mathbf{M}}\, \ddot{\mathit{\mathbf{w}}} + \mathit{\mathbf{C}}\, \dot{\mathit{\mathbf{w}}} + \mathit{\mathbf{K}}\, \mathit{\mathbf{w}} = \mathit{\mathbf{f}}(t),
 	\end{equation}
-	where:
-	\begin{itemize}
-		\item \( \mathbf{M} \): Mass matrix (inertia),
-		\item \( \mathbf{C} = \alpha_R \mathbf{M} + \beta_R \mathbf{K} \): Rayleigh damping matrix,
-		\item \( \mathbf{K} \): Stiffness matrix,
-		\item \( \mathbf{f}(t) \): External force vector,
-		\item \( \mathbf{w}, \dot{\mathbf{w}}, \ddot{\mathbf{w}} \): Displacement, velocity, and acceleration vectors.
-	\end{itemize}
-	
-	---
-	
-	\textbf{Step 1: Initial Conditions}
-	
-	We assume known:
-	\[
-	\mathbf{w}_0, \quad \dot{\mathbf{w}}_0
-	\]
-	
-	Then compute the initial acceleration \( \ddot{\mathbf{w}}_0 \) using the equation of motion:
+	where \( \mathit{\mathbf{w}}, \dot{\mathit{\mathbf{w}}}, \ddot{\mathit{\mathbf{w}}} \) denote displacement, velocity, and acceleration vectors. The matrices \( \mathit{\mathbf{M}}, \mathit{\mathbf{C}}, \mathit{\mathbf{K}} \) are the mass, damping, and stiffness matrices. The damping matrix is often modeled using Rayleigh damping:
 	\begin{equation}
-		\ddot{\mathbf{w}}_0 = \mathbf{M}^{-1} \left[ \mathbf{f}_0 - \mathbf{C} \dot{\mathbf{w}}_0 - \mathbf{K} \mathbf{w}_0 \right]
+		\mathit{\mathbf{C}} = \alpha_R \mathit{\mathbf{M}} + \beta_R \mathit{\mathbf{K}},
 	\end{equation}
+	where \( \alpha_R \) and \( \beta_R \) are mass- and stiffness-proportional damping coefficients.
 	
-	---
-	
-	\textbf{Step 2: Define Effective Stiffness Matrix}
-	
-	The Newmark parameters \( \beta \) and \( \gamma \) (typically \( \beta = \tfrac{1}{4}, \gamma = \tfrac{1}{2} \)) control stability and accuracy.
-	
-	We define:
-	\begin{equation}
-		\mathbf{K}_{\text{eff}} = \mathbf{K} + \frac{\gamma}{\beta \Delta t} \mathbf{C} + \frac{1}{\beta \Delta t^2} \mathbf{M}
-	\end{equation}
-	
-	This matrix stays constant if \( \mathbf{M}, \mathbf{C}, \mathbf{K} \) are time-invariant.
-	
-	---
-	
-	\textbf{Step 3: Construct Effective Force}
-	
-	The force vector on the right-hand side includes known values from the previous time step:
+	At each time step, the Newmark--Beta scheme computes the unknown displacement \( \mathit{\mathbf{w}}_{n+1} \), then updates acceleration and velocity using known values from the previous step. The method uses the following interpolation formulas:
 	\begin{align}
-		\mathbf{F}_{\text{eff}} = \mathbf{f}_{n+1} &+ \mathbf{M} \left( \frac{1}{\beta \Delta t^2} \mathbf{w}_n + \frac{1}{\beta \Delta t} \dot{\mathbf{w}}_n + \frac{1 - 2\beta}{2\beta} \ddot{\mathbf{w}}_n \right) \\
-		&+ \mathbf{C} \left( \frac{\gamma}{\beta \Delta t} \mathbf{w}_n + \left( \frac{\gamma}{\beta} - 1 \right) \dot{\mathbf{w}}_n + \Delta t \left( \frac{\gamma}{2\beta} - 1 \right) \ddot{\mathbf{w}}_n \right)
+		\mathit{\mathbf{w}}_{n+1} &= \mathit{\mathbf{w}}_n + \Delta t\, \dot{\mathit{\mathbf{w}}}_n + \frac{1}{2} \Delta t^2 \left[ (1 - 2\beta) \ddot{\mathit{\mathbf{w}}}_n + 2\beta \ddot{\mathit{\mathbf{w}}}_{n+1} \right], \\
+		\dot{\mathit{\mathbf{w}}}_{n+1} &= \dot{\mathit{\mathbf{w}}}_n + \Delta t \left[ (1 - \gamma) \ddot{\mathit{\mathbf{w}}}_n + \gamma \ddot{\mathit{\mathbf{w}}}_{n+1} \right],
+	\end{align}
+	where \( \beta \) and \( \gamma \) are method parameters. The common choice \( \beta = \tfrac{1}{4} \), \( \gamma = \tfrac{1}{2} \) gives unconditional stability and second-order accuracy.
+	
+	To initiate the time integration, the initial acceleration is computed using:
+	\begin{equation}
+		\ddot{\mathit{\mathbf{w}}}_0 = \mathit{\mathbf{M}}^{-1} \left[ \mathit{\mathbf{f}}_0 - \mathit{\mathbf{C}}\, \dot{\mathit{\mathbf{w}}}_0 - \mathit{\mathbf{K}}\, \mathit{\mathbf{w}}_0 \right].
+	\end{equation}
+	
+	The effective stiffness matrix is defined by:
+	\begin{equation}
+		\mathit{\mathbf{K}}_{\text{eff}} = \mathit{\mathbf{K}} + \frac{\gamma}{\beta \Delta t} \mathit{\mathbf{C}} + \frac{1}{\beta \Delta t^2} \mathit{\mathbf{M}}.
+	\end{equation}
+	
+	The effective force vector is assembled from known values:
+	\begin{align}
+		\mathit{\mathbf{F}}_{\text{eff}} = \mathit{\mathbf{f}}_{n+1}
+		&+ \mathit{\mathbf{M}} \left( \frac{1}{\beta \Delta t^2} \mathit{\mathbf{w}}_n + \frac{1}{\beta \Delta t} \dot{\mathit{\mathbf{w}}}_n + \frac{1 - 2\beta}{2\beta} \ddot{\mathit{\mathbf{w}}}_n \right) \\
+		&+ \mathit{\mathbf{C}} \left( \frac{\gamma}{\beta \Delta t} \mathit{\mathbf{w}}_n + \left( \frac{\gamma}{\beta} - 1 \right) \dot{\mathit{\mathbf{w}}}_n + \Delta t \left( \frac{\gamma}{2\beta} - 1 \right) \ddot{\mathit{\mathbf{w}}}_n \right).
 	\end{align}
 	
-	---
-	
-	\textbf{Step 4: Solve for Displacement at Next Step}
-	
+	The displacement is computed by solving:
 	\begin{equation}
-		\mathbf{w}_{n+1} = \mathbf{K}_{\text{eff}}^{-1} \mathbf{F}_{\text{eff}}
+		\mathit{\mathbf{K}}_{\text{eff}}\, \mathit{\mathbf{w}}_{n+1} = \mathit{\mathbf{F}}_{\text{eff}}.
 	\end{equation}
 	
-	This is the main linear solve for each time step.
+	The acceleration and velocity at the new time step are updated as:
+	\begin{align}
+		\ddot{\mathit{\mathbf{w}}}_{n+1} &= \frac{1}{\beta \Delta t^2} \left( \mathit{\mathbf{w}}_{n+1} - \mathit{\mathbf{w}}_n - \Delta t \dot{\mathit{\mathbf{w}}}_n \right) - \frac{1 - 2\beta}{2\beta} \ddot{\mathit{\mathbf{w}}}_n, \\
+		\dot{\mathit{\mathbf{w}}}_{n+1} &= \dot{\mathit{\mathbf{w}}}_n + \Delta t \left[ (1 - \gamma) \ddot{\mathit{\mathbf{w}}}_n + \gamma \ddot{\mathit{\mathbf{w}}}_{n+1} \right].
+	\end{align}
 	
-	---
-	
-	\textbf{Step 5: Update Acceleration}
-	
-	Once \( \mathbf{w}_{n+1} \) is known, compute:
-	\begin{equation}
-		\ddot{\mathbf{w}}_{n+1} = \frac{1}{\beta \Delta t^2} \left( \mathbf{w}_{n+1} - \mathbf{w}_n - \Delta t \dot{\mathbf{w}}_n \right) - \frac{1 - 2\beta}{2\beta} \ddot{\mathbf{w}}_n
-	\end{equation}
-	
-	This gives the actual physical acceleration at \( t_{n+1} \).
-	
-	---
-	
-	\textbf{Step 6: Update Velocity}
-	
-	Now update velocity:
-	\begin{equation}
-		\dot{\mathbf{w}}_{n+1} = \dot{\mathbf{w}}_n + \Delta t \left[ (1 - \gamma) \ddot{\mathbf{w}}_n + \gamma \ddot{\mathbf{w}}_{n+1} \right]
-	\end{equation}
-	
-	---
-	
-	\textbf{Interpretation:}
-	
-	- The system first predicts displacement using known values.
-	- The acceleration and velocity are then \textit{corrected} based on the actual displacement obtained.
-	- Damping is included directly in the matrix system (via Rayleigh terms), which affects how the system resists motion — especially at high frequency.
-	
-	---
-	
-	\textbf{Typical Parameter Choice:}
-	\[
-	\beta = \frac{1}{4}, \quad \gamma = \frac{1}{2} \quad \Rightarrow \quad \text{Unconditionally stable and second-order accurate}
-	\]
-	
-	
+	The influence of Rayleigh damping is embedded directly in the matrix solve. The coefficient \( \alpha_R \) provides damping for lower-frequency (mass-dominated) modes, while \( \beta_R \) suppresses higher-frequency (stiffness-dominated) vibrations. This results in a stable and physically realistic solution, particularly in systems with broad frequency content.
 	
 	
 	
