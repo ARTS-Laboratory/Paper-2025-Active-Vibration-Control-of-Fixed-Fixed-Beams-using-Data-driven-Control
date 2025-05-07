@@ -9,33 +9,45 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{caption}
-\usepackage{todo}
+\usepackage{color}
+\usepackage{soul}
+\newcommand{\bl}[1]{\textcolor[rgb]{0.00,0.00,1.00}{#1}}
+\newcommand{\gr}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\rd}[1]{\textcolor[rgb]{0.75,0.00,0.00}{\st{#1}}}
+\newcommand{\tl}[1]{\textcolor[rgb]{0,0.6,0.60}{#1}}
+\usepackage[textsize=tiny]{todonotes}
 \geometry{a4paper, margin=1in}
+
+\usepackage{titlesec}
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\bfseries}{\thesubsubsection}{1em}{}
 
 
 \begin{document}
 	
-	\title{Finite Element Formulation of the Extended Euler-Bernoulli Beam with Axial Forces}
+	\title{Finite Element Formulation for an Extended Euler-Bernoulli Beam with Axial Forces}
 	\author{}
 	\date{}
 	\maketitle
 	
-	\section*{Governing Equation}
-	\section*{Nomenclature}
-	\begin{tabular}{p{2cm} p{1cm} p{11cm}}
+	This document derives and implements a finite element formulation for a fixed-fixed Euler–Bernoulli beam incorporating both axial and bending dynamics. The governing equations are discretized using linear and Hermite shape functions, with consistent mass and stiffness matrices assembled for each element. Time integration is performed via both implicit (Newmark–Beta) and explicit (central difference) schemes, and control inputs are applied to simulate vibration suppression through axial forces and moments.
+	
+	\section{Nomenclature}
+	\begin{tabular}{@{}p{2cm}@{} p{2cm}@{} p{11cm}@{}}
 		$E$           & [Pa]    & Young’s modulus (steel: $2.1\times10^{11}$).\\
 		$A$           & [m$^2$] & Cross‐sectional area (e.g. $0.01$).\\
 		$I$           & [m$^4$] & Second moment of area (e.g. $8.333\times10^{-6}$).\\
 		$\rho$        & [kg/m$^3$]& Mass density (e.g. $7850$).\\
 		$L$           & [m]     & Total beam length (e.g. $2$).\\
-		$L_e$         & [m]     & Element length: $L_e=L/n_{\mathrm{elem}}$.\\
+		$L_\mathrm{e}$         & [m]     & Element length: $L_\mathrm{e}=L/n_{\mathrm{elem}}$.\\
 		$x$           & [m]     & Spatial coordinate.\\
 		$t$           & [s]     & Time coordinate.\\
 		$u(x,t)$      & [m]     & Axial displacement.\\
 		$w(x,t)$      & [m]     & Transverse displacement.\\
 		$\delta u,\;\delta w$ & – & Virtual (test) displacements.\\
-		$k_e$         & –       & Full element stiffness matrix (6×6).\\
-		$m_e$         & –       & Full element mass matrix (6×6).\\
+		$K_\mathrm{e}$         & –       & Full element stiffness matrix (6×6).\\
+		$M_\mathrm{e}$         & –       & Full element mass matrix (6×6).\\
 	\end{tabular}
 	
 	\section{Governing Equations}
@@ -66,12 +78,12 @@
 			Free body diagram of a fixed-fixed beam subjected to a transverse point load.}
 	\end{figure} 
 	
-	\textbf{Explanation for Trotter:} This is the main rule that tells us how the beam bends and moves when a force is applied.
+%	\textbf{Explanation for Trotter:} This is the main rule that tells us how the beam bends and moves when a force is applied.
 	
-	\section{Weak Form}
+	\section{Weak Formulation of Beam Dynamics}
 	To reduce the continuity requirements on trial and test spaces and to impose natural boundary conditions, we derive the variational form by multiplying each strong equation by its virtual displacement and integrating by parts.
 	
-	\subsection{Axial}
+	\subsection{Axial Weak Form}
 	Multiply Eq.~\eqref{eq:axial_strong} by \(\delta u\), integrate by parts:
 	\begin{equation}\label{eq:axial_weak}
 		\int_0^L EA\,u'\,\delta u'\,dx 
@@ -80,7 +92,7 @@
 		\int_0^L EA\,u'\,\delta u'\,dx = 0.
 	\end{equation}
 	
-	\subsection{Bending}
+	\subsection{Bending Weak Form}
 	Multiply Eq.~\eqref{eq:transverse_strong} by \(\delta w\), integrate by parts twice:
 	\begin{equation}\label{eq:bending_weak}
 		\int_0^L EI\,w''\,\delta w''\,dx 
@@ -89,45 +101,45 @@
 		\int_0^L EI\,w''\,\delta w''\,dx = 0.
 	\end{equation}
 	
-	\section{Finite‐Element Interpolations}
-	\subsection{Axial (linear)}
-	We approximate \(u(x)\) over each element of length \(L_e\) by
+	\section{Finite-Element Shape Functions and Interpolation}
+	\subsection{Linear Shape Functions for Axial Displacement}
+	We approximate \(u(x)\) over each element of length \(L_\mathrm{e}\) by
 	\begin{equation}\label{eq:axial_interp}
 		N^{(u)}(x)
-		= \begin{pmatrix}1-\tfrac{x}{L_e}\\[4pt]\tfrac{x}{L_e}\end{pmatrix},
+		= \begin{pmatrix}1-\tfrac{x}{L_\mathrm{e}}\\[4pt]\tfrac{x}{L_\mathrm{e}}\end{pmatrix},
 		\qquad
 		u(x)=\bigl[N^{(u)}(x)\bigr]^\text{T}(u_1,u_2)^\text{T}.
 	\end{equation}
 	
-	\subsection{Transverse (Hermite cubic)}
-	To capture bending curvature with \(C^1\) continuity, we use four cubic polynomials: \todo{all of the subscript "e"s should not be italic, they are not a variable, they are a descriptor. }
+	\subsection{Hermite Cubic Interpolation for Bending}
+	To capture bending curvature with \(C^1\) continuity, we use four cubic polynomials: \todo{all of the subscript "e"s should not be italic, they are not a variable, they are a descriptor. I fixed those them, but just make sure to fix this in the future.}
 	\begin{equation}\label{eq:cubic_interp}
 		\begin{aligned}
-			N_1(x)&=1-3(\tfrac{x}{L_e})^2+2(\tfrac{x}{L_e})^3,\\
-			N_2(x)&=x[1-2(\tfrac{x}{L_e})+(\tfrac{x}{L_e})^2],\\
-			N_3(x)&=3(\tfrac{x}{L_e})^2-2(\tfrac{x}{L_e})^3,\\
-			N_4(x)&=x[-(\tfrac{x}{L_e})+(\tfrac{x}{L_e})^2].
+			N_1(x)&=1-3(\tfrac{x}{L_\mathrm{e}})^2+2(\tfrac{x}{L_\mathrm{e}})^3,\\
+			N_2(x)&=x[1-2(\tfrac{x}{L_\mathrm{e}})+(\tfrac{x}{L_\mathrm{e}})^2],\\
+			N_3(x)&=3(\tfrac{x}{L_\mathrm{e}})^2-2(\tfrac{x}{L_\mathrm{e}})^3,\\
+			N_4(x)&=x[-(\tfrac{x}{L_\mathrm{e}})+(\tfrac{x}{L_\mathrm{e}})^2].
 		\end{aligned}
 	\end{equation}
-	Mapping \(x\to\xi=x/L_e\in[0,1]\) for integration:
+	Mapping \(x\to\xi=x/L_\mathrm{e}\in[0,1]\) for integration:
 	\begin{equation}\label{eq:map_interp}
 		\begin{aligned}
 			N_1(\xi)&=1-3\xi^2+2\xi^3,\quad
-			N_2(\xi)=L_e\,\xi(1-2\xi+\xi^2),\\
+			N_2(\xi)=L_\mathrm{e}\,\xi(1-2\xi+\xi^2),\\
 			N_3(\xi)&=3\xi^2-2\xi^3,\quad
-			N_4(\xi)=L_e\,\xi(-\xi+\xi^2).
+			N_4(\xi)=L_\mathrm{e}\,\xi(-\xi+\xi^2).
 		\end{aligned}
 	\end{equation}
 	
-	\section{Element Stiffness Matrices}
+	\section{Derivation of Element Stiffness Matrices}
 	Substituting the above interpolations into the weak forms (\ref{eq:axial_weak})–(\ref{eq:bending_weak}) and evaluating the resulting integrals yields:
 	
 	\subsection{Axial}
 	By inserting \(u(x)\) from \eqref{eq:axial_interp} into \eqref{eq:axial_weak} and noting the constant derivative,
 	\begin{equation}\label{eq:ke_axial}
-		k_e^{(\mathrm{axial})}
-		= \int_0^{L_e}EA\,\frac{dN^{(u)}}{dx}\frac{dN^{(u)}}{dx}^\text{T}dx
-		= \frac{EA}{L_e}
+		K_\mathrm{e}^{(\mathrm{axial})}
+		= \int_0^{L_\mathrm{e}}EA\,\frac{dN^{(u)}}{dx}\frac{dN^{(u)}}{dx}^\text{T}dx
+		= \frac{EA}{L_\mathrm{e}}
 		\begin{pmatrix}1 & -1\\ -1 & 1\end{pmatrix}.
 	\end{equation}
 
@@ -137,109 +149,109 @@
 	\begin{equation}\label{eq:B_vector}
 		B(\xi)
 		= \frac{d^2N^{(w)}}{dx^2}
-		= \frac{1}{L_e^2}[6\xi-6,\;3\xi-4,\;-6\xi+6,\;3\xi-2],
+		= \frac{1}{L_\mathrm{e}^2}[6\xi-6,\;3\xi-4,\;-6\xi+6,\;3\xi-2],
 	\end{equation}
 	then
 	\begin{equation}\label{eq:ke_bending}
-		k_e^{(\mathrm{bending})}
-		= EI\int_0^{L_e}B^\text{T} B\,dx
-		= \frac{EI}{L_e^3}
+		K_\mathrm{e}^{(\mathrm{bending})}
+		= EI\int_0^{L_\mathrm{e}}B^\text{T} B\,dx
+		= \frac{EI}{L_\mathrm{e}^3}
 		\begin{pmatrix}
-			12 & 6L_e & -12 & 6L_e\\
-			6L_e & 4L_e^2 & -6L_e & 2L_e^2\\
-			-12 & -6L_e & 12 & -6L_e\\
-			6L_e & 2L_e^2 & -6L_e & 4L_e^2
+			12 & 6L_\mathrm{e} & -12 & 6L_\mathrm{e}\\
+			6L_\mathrm{e} & 4L_\mathrm{e}^2 & -6L_\mathrm{e} & 2L_\mathrm{e}^2\\
+			-12 & -6L_\mathrm{e} & 12 & -6L_\mathrm{e}\\
+			6L_\mathrm{e} & 2L_\mathrm{e}^2 & -6L_\mathrm{e} & 4L_\mathrm{e}^2
 		\end{pmatrix}.
 	\end{equation}
 	
-	\subsection{Assembled stiffness}
+	\subsection{Element-Level Assembly of Stiffness Matrix}
 	Finally, the full 6×6 element stiffness matrix is
 	\begin{equation}\label{eq:ke_assembled}
-		k_e
+		K_\mathrm{e}
 		= \begin{pmatrix}
-			k_e^{(\mathrm{axial})} & \mathbf{0}\\
-			\mathbf{0}            & k_e^{(\mathrm{bending})}
+			K_\mathrm{e}^{(\mathrm{axial})} & {0}\\
+			{0}            & K_\mathrm{e}^{(\mathrm{bending})}
 		\end{pmatrix}.
 	\end{equation}
 	
-	\section{Element Mass Matrices}
+	\section{Derivation of Element Mass Matrices}
 	The element mass matrix comes from the beam’s kinetic energy:
 	\begin{equation}
 		T
-		= \tfrac12\int_0^{L_e}\rho A\,\dot u^2(x,t)\,dx
-		+\tfrac12\int_0^{L_e}\rho A\,\dot w^2(x,t)\,dx.
+		= \tfrac12\int_0^{L_\mathrm{e}}\rho A\,\dot u^2(x,t)\,dx
+		+\tfrac12\int_0^{L_\mathrm{e}}\rho A\,\dot w^2(x,t)\,dx.
 	\end{equation}
 	
 	\subsection{Axial}
 	We start with the axial kinetic energy
 	\begin{equation}
 		T_{\mathrm{axial}}
-		= \tfrac12\int_0^{L_e}\rho A\,\dot u^2\,dx.
+		= \tfrac12\int_0^{L_\mathrm{e}}\rho A\,\dot u^2\,dx.
 	\end{equation}
 	Substitute the linear interpolation \eqref{eq:axial_interp}:
 	\begin{equation}
 		\dot u(x,t)
-		= \bigl[N^{(u)}(x)\bigr]^\text{T}\,\dot{\mathbf{u}},
+		= \bigl[N^{(u)}(x)\bigr]^\text{T}\,\dot{{u}},
 	\end{equation}
 	which gives
 	\begin{equation}
 		T_{\mathrm{axial}}
-		= \tfrac12\,\dot{\mathbf{u}}^\text{T}
-		\Bigl[\int_0^{L_e}\rho A\,N^{(u)}N^{(u)T}\,dx\Bigr]
-		\,\dot{\mathbf{u}}
-		= \tfrac12\,\dot{\mathbf{u}}^\text{T}\,m_e^{(\mathrm{axial})}\,\dot{\mathbf{u}}.
+		= \tfrac12\,\dot{{u}}^\text{T}
+		\Bigl[\int_0^{L_\mathrm{e}}\rho A\,N^{(u)}N^{(u)T}\,dx\Bigr]
+		\,\dot{{u}}
+		= \tfrac12\,\dot{{u}}^\text{T}\,M_\mathrm{e}^{(\mathrm{axial})}\,\dot{{u}}.
 	\end{equation}
 	Hence the consistent axial mass block is
 	\begin{equation}\label{eq:me_axial}
-		m_e^{(\mathrm{axial})}
-		= \int_0^{L_e}\rho A\,N^{(u)}N^{(u)T}\,dx
-		= \frac{\rho A L_e}{6}
+		M_\mathrm{e}^{(\mathrm{axial})}
+		= \int_0^{L_\mathrm{e}}\rho A\,N^{(u)}N^{(u)T}\,dx
+		= \frac{\rho A L_\mathrm{e}}{6}
 		\begin{pmatrix}2 & 1\\ 1 & 2\end{pmatrix}.
 	\end{equation}
 	
 	\subsection{Bending}
 	Likewise, for bending
 	\begin{equation}
-		T_{\mathrm{bend}}
-		= \tfrac12\int_0^{L_e}\rho A\,\dot w^2\,dx.
+		T_{\mathrm{bending}}
+		= \tfrac12\int_0^{L_\mathrm{e}}\rho A\,\dot w^2\,dx.
 	\end{equation}
 	Using the Hermite‐cubic interpolation \eqref{eq:cubic_interp}:
 	\begin{equation}
 		\dot w(x,t)
-		= \bigl[N^{(w)}(\xi)\bigr]^\text{T}\,\dot{\mathbf{w}},
+		= \bigl[N^{(w)}(\xi)\bigr]^\text{T}\,\dot{{w}},
 	\end{equation}
 	we obtain
 	\begin{equation}
-		T_{\mathrm{bend}}
-		= \tfrac12\,\dot{\mathbf{w}}^\text{T}
-		\Bigl[\int_0^{L_e}\rho A\,N^{(w)}(\xi)N^{(w)T}(\xi)\,dx\Bigr]
-		\,\dot{\mathbf{w}}
-		= \tfrac12\,\dot{\mathbf{w}}^\text{T}\,m_e^{(\mathrm{bending})}\,\dot{\mathbf{w}}.
+		T_{\mathrm{bending}}
+		= \tfrac12\,\dot{{w}}^\text{T}
+		\Bigl[\int_0^{L_\mathrm{e}}\rho A\,N^{(w)}(\xi)N^{(w)T}(\xi)\,dx\Bigr]
+		\,\dot{{w}}
+		= \tfrac12\,\dot{{w}}^\text{T}\,M_\mathrm{e}^{(\mathrm{bending})}\,\dot{{w}}.
 	\end{equation}
 	Thus the bending mass block is
 	\begin{equation}\label{eq:me_bending}
-		m_e^{(\mathrm{bending})}
-		= \int_0^{L_e}\rho A\,N^{(w)}(\xi)N^{(w)T}(\xi)\,dx
-		= \frac{\rho A L_e}{420}
+		M_\mathrm{e}^{(\mathrm{bending})}
+		= \int_0^{L_\mathrm{e}}\rho A\,N^{(w)}(\xi)N^{(w)T}(\xi)\,dx
+		= \frac{\rho A L_\mathrm{e}}{420}
 		\begin{pmatrix}
-			156 & 22L_e & 54 & -13L_e\\
-			22L_e & 4L_e^2 & 13L_e & -3L_e^2\\
-			54 & 13L_e & 156 & -22L_e\\
-			-13L_e & -3L_e^2 & -22L_e & 4L_e^2
+			156 & 22L_\mathrm{e} & 54 & -13L_\mathrm{e}\\
+			22L_\mathrm{e} & 4L_\mathrm{e}^2 & 13L_\mathrm{e} & -3L_\mathrm{e}^2\\
+			54 & 13L_\mathrm{e} & 156 & -22L_\mathrm{e}\\
+			-13L_\mathrm{e} & -3L_\mathrm{e}^2 & -22L_\mathrm{e} & 4L_\mathrm{e}^2
 		\end{pmatrix}.
 	\end{equation}
 	
-	\subsection{Assembled Mass}
+	\subsection{Element-Level Assembly of Mass Matrix}
 	Putting axial and bending together gives the full element mass matrix:
 	\begin{equation}\label{eq:me_assembled}
-		m_e
+		M_\mathrm{e}
 		= \begin{pmatrix}
-			m_e^{(\mathrm{axial})} & \mathbf{0}\\
-			\mathbf{0}            & m_e^{(\mathrm{bending})}
+			M_\mathrm{e}^{(\mathrm{axial})} & {0}\\
+			{0}            & M_\mathrm{e}^{(\mathrm{bending})}
 		\end{pmatrix}.
 	\end{equation}
 	
-	\section{Equation of Motion and Time Integration}
+	\section{Global System and Time Integration Methods}
 	
 	% -------------------------------------------------------------------
 	% Before the equation: introduce and define all terms
@@ -306,13 +318,13 @@
 	% -------------------------------------------------------------------
 	Here:
 	\begin{itemize}
-		\item \(W = [\,u_1,\;w_1,\;\theta_1,\;\dots,\;u_N,\;w_N,\;\theta_N\,]^\text{T}\) collects all \(3N\) nodal degrees of freedom: 
+		\item \(W = [\,u_1,\;w_1,\;\theta_1,\;\dots,\;u_N,\;w_N,\;\theta_N\,]^\mathrm{T}\) collects all \(3N\) nodal degrees of freedom: 
 		\(u_i\) (axial displacement), \(w_i\) (transverse displacement), and \(\theta_i\) (slope) at node \(i\).
 		\item \(\ddot W\) and \(\dot W\) are the corresponding acceleration and velocity vectors.
 		\item \(M = [m_{ij}]\) is the global mass matrix, assembled from each element’s consistent mass blocks (Eqs.~\eqref{eq:me_axial} and \eqref{eq:me_bending}).
 		\item \(C = [c_{ij}]\) is the global damping matrix (e.g.\ Rayleigh damping \(C=\alpha M + \beta K\)).
 		\item \(K = [k_{ij}]\) is the global stiffness matrix, assembled from each element’s axial and bending stiffness (Eqs.~\eqref{eq:ke_axial}–\eqref{eq:ke_bending}).
-		\item \(F(t) = [F_1(t),F_2(t),\dots,F_n(t)]^\text{T}\) is the vector of external (or control) forces and moments applied at each DOF.
+		\item \(f(t) = [f_1(t),f_2(t),\dots,f_n(t)]^\mathrm{T}\) is the vector of external (or control) forces and moments applied at each DOF.
 	\end{itemize}
 	
 	Equation~\eqref{eq:global_expanded} succinctly represents the dynamic equilibrium of the entire beam structure in its finite‐element discretization.
@@ -322,19 +334,18 @@
 
 %%% Beginning of the time integration section%%%%%%%%%
 	
-	\subsection{Dynamic time integration}
+	\subsection{Implicit Newmark–Beta Time Integration}
 
 	The Newmark--Beta method is a widely used implicit time integration scheme for solving second-order systems of the form:
 	\begin{equation}
-		\mathit{\mathbf{M}}\, \ddot{\mathit{\mathbf{w}}} + \mathit{\mathbf{C}}\, \dot{\mathit{\mathbf{w}}} + \mathit{\mathbf{K}}\, \mathit{\mathbf{w}} = \mathit{\mathbf{f}}(t),
+		{M}\, \ddot{{w}} + {C}\, \dot{{w}} + {K}\, {w} = {f}(t),
 	\end{equation}
-	where \( \mathit{\mathbf{w}}, \dot{\mathit{\mathbf{w}}}, \ddot{\mathit{\mathbf{w}}} \) denote displacement, velocity, and acceleration vectors. The matrices \( \mathit{\mathbf{M}}, \mathit{\mathbf{C}}, \mathit{\mathbf{K}} \) are the mass, damping, and stiffness matrices. The damping matrix is often modeled using Rayleigh damping.
+	where \( \mathit{{w}}, \dot{\mathit{{w}}}, \ddot{\mathit{{w}}} \) denote displacement, velocity, and acceleration vectors. The matrices \( \mathit{{M}}, \mathit{{C}}, \mathit{{K}} \) are the mass, damping, and stiffness matrices. The damping matrix is often modeled using Rayleigh damping.
 	
-	\subsubsection{Determination of Rayleigh Damping Coefficients}
-	\todo{does this need to be in the dynamic time integration section?}
+	\subsubsection{Rayleigh Damping Coefficients}
 	Rayleigh damping is modeled by a linear combination of the mass and stiffness matrices:
 	\begin{equation}
-		\mathbf{C} = \alpha_R \mathbf{M} + \beta_R \mathbf{K},
+		{C} = \alpha_R {M} + \beta_R {K},
 	\end{equation}
 	where \( \alpha_R \) and \( \beta_R \) are the mass- and stiffness-proportional damping coefficients, respectively.
 	
@@ -368,21 +379,21 @@
 		\end{bmatrix}.
 	\end{equation}
 	
-	Let this system be denoted as \( \mathbf{A} \boldsymbol{x} = \boldsymbol{b} \), where:
+	Let this system be denoted as \( {A}{x} = {b} \), where:
 	\[
-	\mathbf{A} =
+	{A} =
 	\begin{bmatrix}
 		\dfrac{1}{2\omega_1} & \dfrac{\omega_1}{2} \\\\
 		\dfrac{1}{2\omega_2} & \dfrac{\omega_2}{2}
 	\end{bmatrix},
 	\quad
-	\boldsymbol{x} =
+	{x} =
 	\begin{bmatrix}
 		\alpha_R \\\\
 		\beta_R
 	\end{bmatrix},
 	\quad
-	\boldsymbol{b} =
+	{b} =
 	\begin{bmatrix}
 		\zeta_1 \\\\
 		\zeta_2
@@ -396,87 +407,87 @@
 			\beta_R
 		\end{bmatrix}
 		=
-		\mathbf{A}^{-1} \boldsymbol{b}.
+		{A}^{-1}{b}.
 	\end{equation}
 	
-	This procedure ensures that the resulting damping matrix \( \mathbf{C} \) produces the desired damping ratios at the specified frequencies. The coefficient \( \alpha_R \) primarily affects low-frequency (inertial) damping, while \( \beta_R \) dominates in high-frequency (stiffness-driven) modes.
+	This procedure ensures that the resulting damping matrix \( {C} \) produces the desired damping ratios at the specified frequencies. The coefficient \( \alpha_R \) primarily affects low-frequency (inertial) damping, while \( \beta_R \) dominates in high-frequency (stiffness-driven) modes.
 	
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-\subsubsection{The implicit time integration}
-	At each time step, the Newmark--Beta scheme computes the unknown displacement \( \mathit{\mathbf{w}}_{n+1} \), then updates acceleration and velocity using known values from the previous step. The method uses the following interpolation formulas:
+\subsubsection{Implicit Time Integration}
+	At each time step, the Newmark--Beta scheme computes the unknown displacement \( \mathit{{w}}_{n+1} \), then updates acceleration and velocity using known values from the previous step. The method uses the following interpolation formulas:
 	\begin{align}
-		\mathit{\mathbf{w}}_{n+1} &= \mathit{\mathbf{w}}_n + \Delta t\, \dot{\mathit{\mathbf{w}}}_n + \frac{1}{2} \Delta t^2 \left[ (1 - 2\beta) \ddot{\mathit{\mathbf{w}}}_n + 2\beta \ddot{\mathit{\mathbf{w}}}_{n+1} \right], \\
-		\dot{\mathit{\mathbf{w}}}_{n+1} &= \dot{\mathit{\mathbf{w}}}_n + \Delta t \left[ (1 - \gamma) \ddot{\mathit{\mathbf{w}}}_n + \gamma \ddot{\mathit{\mathbf{w}}}_{n+1} \right],
+		\mathit{{w}}_{n+1} &= \mathit{{w}}_n + \Delta t\, \dot{\mathit{{w}}}_n + \frac{1}{2} \Delta t^2 \left[ (1 - 2\beta) \ddot{\mathit{{w}}}_n + 2\beta \ddot{\mathit{{w}}}_{n+1} \right], \\
+		\dot{\mathit{{w}}}_{n+1} &= \dot{\mathit{{w}}}_n + \Delta t \left[ (1 - \gamma) \ddot{\mathit{{w}}}_n + \gamma \ddot{\mathit{{w}}}_{n+1} \right],
 	\end{align}
 	where \( \beta \) and \( \gamma \) are method parameters. The common choice \( \beta = \tfrac{1}{4} \), \( \gamma = \tfrac{1}{2} \) gives unconditional stability and second-order accuracy.
 	
 	To initiate the time integration, the initial acceleration is computed using:
 	\begin{equation}
-		\ddot{\mathit{\mathbf{w}}}_0 = \mathit{\mathbf{M}}^{-1} \left[ \mathit{\mathbf{f}}_0 - \mathit{\mathbf{C}}\, \dot{\mathit{\mathbf{w}}}_0 - \mathit{\mathbf{K}}\, \mathit{\mathbf{w}}_0 \right].
+		\ddot{\mathit{{w}}}_0 = \mathit{{M}}^{-1} \left[ \mathit{{f}}_0 - \mathit{{C}}\, \dot{\mathit{{w}}}_0 - \mathit{{K}}\, \mathit{{w}}_0 \right].
 	\end{equation}
 	
 	The effective stiffness matrix is defined by:
 	\begin{equation}
-		\mathit{\mathbf{K}}_{\text{eff}} = \mathit{\mathbf{K}} + \frac{\gamma}{\beta \Delta t} \mathit{\mathbf{C}} + \frac{1}{\beta \Delta t^2} \mathit{\mathbf{M}}.
+		\mathit{{K}}_{\text{eff}} = \mathit{{K}} + \frac{\gamma}{\beta \Delta t} \mathit{{C}} + \frac{1}{\beta \Delta t^2} \mathit{{M}}.
 	\end{equation}
 	
 	The effective force vector is assembled from known values:
 	\begin{align}
-		\mathit{\mathbf{F}}_{\text{eff}} = \mathit{\mathbf{f}}_{n+1}
-		&+ \mathit{\mathbf{M}} \left( \frac{1}{\beta \Delta t^2} \mathit{\mathbf{w}}_n + \frac{1}{\beta \Delta t} \dot{\mathit{\mathbf{w}}}_n + \frac{1 - 2\beta}{2\beta} \ddot{\mathit{\mathbf{w}}}_n \right) \\
-		&+ \mathit{\mathbf{C}} \left( \frac{\gamma}{\beta \Delta t} \mathit{\mathbf{w}}_n + \left( \frac{\gamma}{\beta} - 1 \right) \dot{\mathit{\mathbf{w}}}_n + \Delta t \left( \frac{\gamma}{2\beta} - 1 \right) \ddot{\mathit{\mathbf{w}}}_n \right).
+		\mathit{{F}}_{\text{eff}} = \mathit{{f}}_{n+1}
+		&+ \mathit{{M}} \left( \frac{1}{\beta \Delta t^2} \mathit{{w}}_n + \frac{1}{\beta \Delta t} \dot{\mathit{{w}}}_n + \frac{1 - 2\beta}{2\beta} \ddot{\mathit{{w}}}_n \right) \\
+		&+ \mathit{{C}} \left( \frac{\gamma}{\beta \Delta t} \mathit{{w}}_n + \left( \frac{\gamma}{\beta} - 1 \right) \dot{\mathit{{w}}}_n + \Delta t \left( \frac{\gamma}{2\beta} - 1 \right) \ddot{\mathit{{w}}}_n \right).
 	\end{align}
 	
 	The displacement is computed by solving:
 	\begin{equation}
-		\mathit{\mathbf{K}}_{\text{eff}}\, \mathit{\mathbf{w}}_{n+1} = \mathit{\mathbf{F}}_{\text{eff}}.
+		\mathit{{K}}_{\text{eff}}\, \mathit{{w}}_{n+1} = \mathit{{F}}_{\text{eff}}.
 	\end{equation}
 	
 	The acceleration and velocity at the new time step are updated as:
 	\begin{align}
-		\ddot{\mathit{\mathbf{w}}}_{n+1} &= \frac{1}{\beta \Delta t^2} \left( \mathit{\mathbf{w}}_{n+1} - \mathit{\mathbf{w}}_n - \Delta t \dot{\mathit{\mathbf{w}}}_n \right) - \frac{1 - 2\beta}{2\beta} \ddot{\mathit{\mathbf{w}}}_n, \\
-		\dot{\mathit{\mathbf{w}}}_{n+1} &= \dot{\mathit{\mathbf{w}}}_n + \Delta t \left[ (1 - \gamma) \ddot{\mathit{\mathbf{w}}}_n + \gamma \ddot{\mathit{\mathbf{w}}}_{n+1} \right].
+		\ddot{\mathit{{w}}}_{n+1} &= \frac{1}{\beta \Delta t^2} \left( \mathit{{w}}_{n+1} - \mathit{{w}}_n - \Delta t \dot{\mathit{{w}}}_n \right) - \frac{1 - 2\beta}{2\beta} \ddot{\mathit{{w}}}_n, \\
+		\dot{\mathit{{w}}}_{n+1} &= \dot{\mathit{{w}}}_n + \Delta t \left[ (1 - \gamma) \ddot{\mathit{{w}}}_n + \gamma \ddot{\mathit{{w}}}_{n+1} \right].
 	\end{align}
 	
 	The influence of Rayleigh damping is embedded directly in the matrix solve. The coefficient \( \alpha_R \) provides damping for lower-frequency (mass-dominated) modes, while \( \beta_R \) suppresses higher-frequency (stiffness-dominated) vibrations. This results in a stable and physically realistic solution, particularly in systems with broad frequency content.
 	
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-	\subsubsection{Central Difference Explicit Time Integration}
+	\subsubsection{Central Difference Explicit Integration}
 	
 	The central difference method is a second-order explicit time integration technique suitable for wave propagation and dynamic response problems. The update of displacement is given by:
 	\begin{equation}
-		\mathbf{w}_{n+1} = \Delta t^2 \mathbf{M}^{-1} \left[ \mathbf{f}_n - \mathbf{K} \mathbf{w}_n - \mathbf{C} \left( \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t} \right) \right] + 2\mathbf{w}_n - \mathbf{w}_{n-1},
+		{w}_{n+1} = \Delta t^2 {M}^{-1} \left[ {f}_n - {K} {w}_n - {C} \left( \frac{{w}_n - {w}_{n-1}}{\Delta t} \right) \right] + 2{w}_n - {w}_{n-1},
 	\end{equation}
-	where \( \mathbf{C} = \alpha_R \mathbf{M} + \beta_R \mathbf{K} \) is the Rayleigh damping matrix. This formulation includes both stiffness and mass proportional damping contributions.
+	where \( {C} = \alpha_R {M} + \beta_R {K} \) is the Rayleigh damping matrix. This formulation includes both stiffness and mass proportional damping contributions.
 	
 	We proceed as follows:
 	
 
-	Assume initial displacement \( \mathbf{w}_0 \), and velocity \( \dot{\mathbf{w}}_0 \). Compute the initial acceleration from the equation of motion:
+	Assume initial displacement \( {w}_0 \), and velocity \( \dot{{w}}_0 \). Compute the initial acceleration from the equation of motion:
 	\begin{equation}
-		\ddot{\mathbf{w}}_0 = \mathbf{M}^{-1} \left( \mathbf{f}_0 - \mathbf{C} \dot{\mathbf{w}}_0 - \mathbf{K} \mathbf{w}_0 \right).
+		\ddot{{w}}_0 = {M}^{-1} \left( {f}_0 - {C} \dot{{w}}_0 - {K} {w}_0 \right).
 	\end{equation}
 	
-Using a Taylor expansion for a special start (explicit scheme has no \( \mathbf{w}_{-1} \)):
+Using a Taylor expansion for a special start (explicit scheme has no \( {w}_{-1} \)):
 	\begin{equation}
-		\mathbf{w}_1 = \mathbf{w}_0 + \Delta t \dot{\mathbf{w}}_0 + \frac{1}{2} \Delta t^2 \ddot{\mathbf{w}}_0.
+		{w}_1 = {w}_0 + \Delta t \dot{{w}}_0 + \frac{1}{2} \Delta t^2 \ddot{{w}}_0.
 	\end{equation}
-	If \( \dot{\mathbf{w}}_0 = 0 \), this simplifies to:
+	If \( \dot{{w}}_0 = 0 \), this simplifies to:
 	\begin{equation}
-		\mathbf{w}_1 = \mathbf{w}_0 + \frac{1}{2} \Delta t^2 \ddot{\mathbf{w}}_0.
+		{w}_1 = {w}_0 + \frac{1}{2} \Delta t^2 \ddot{{w}}_0.
 	\end{equation}
 	
 For \( n \geq 1 \), we use the central difference recurrence:
 	\begin{equation}
-		\mathbf{w}_{n+1} = \Delta t^2 \mathbf{M}^{-1} \left[ \mathbf{f}_n - \mathbf{K} \mathbf{w}_n - \mathbf{C} \left( \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t} \right) \right] + 2\mathbf{w}_n - \mathbf{w}_{n-1}.
+		{w}_{n+1} = \Delta t^2 {M}^{-1} \left[ {f}_n - {K} {w}_n - {C} \left( \frac{{w}_n - {w}_{n-1}}{\Delta t} \right) \right] + 2{w}_n - {w}_{n-1}.
 	\end{equation}
 	
 Velocity and acceleration can be recovered at each time step using finite differences:
 	\begin{align}
-		\dot{\mathbf{w}}_n &= \frac{\mathbf{w}_{n+1} - \mathbf{w}_{n-1}}{2\Delta t}, \\
-		\ddot{\mathbf{w}}_n &= \frac{\mathbf{w}_{n+1} - 2\mathbf{w}_n + \mathbf{w}_{n-1}}{\Delta t^2}.
+		\dot{{w}}_n &= \frac{{w}_{n+1} - {w}_{n-1}}{2\Delta t}, \\
+		\ddot{{w}}_n &= \frac{{w}_{n+1} - 2{w}_n + {w}_{n-1}}{\Delta t^2}.
 	\end{align}
 	
 	
@@ -487,7 +498,7 @@ Velocity and acceleration can be recovered at each time step using finite differ
 		\Delta t < \frac{2}{\omega_{\max}},
 	\end{equation}
 	
-	where \( \omega_{\max} \) represents the highest natural frequency of the system. This value is directly associated with the largest eigenvalue of the matrix \( \mathbf{M}^{-1} \mathbf{K} \), where \( \mathbf{M} \) and \( \mathbf{K} \) are the global mass and stiffness matrices, respectively. If this condition is not met, the numerical solution may become unstable and diverge.
+	where \( \omega_{\max} \) represents the highest natural frequency of the system. This value is directly associated with the largest eigenvalue of the matrix \( {M}^{-1} {K} \), where \( {M} \) and \( {K} \) are the global mass and stiffness matrices, respectively. If this condition is not met, the numerical solution may become unstable and diverge.
 	
 	
 %	\subsubsection{Explicit vs. Implicit Time Integration: Trade-offs and Applications}
@@ -505,12 +516,7 @@ Velocity and acceleration can be recovered at each time step using finite differ
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 	
-	
-	
-	
-	
-	
-	\section*{Control Force Calculation}
+	\section{Control Force Implementation}
 	Control forces are introduced at selected nodes along the beam to actively influence both axial and bending responses. As shown in Figure~\ref{fig:control_forces}, each actuator applies a concentrated axial force \( F_{\text{control}} \) along the beam axis and induces a moment \( M_{\text{control}} \) by acting off-center relative to the beam’s neutral axis. These control actions are designed to counteract undesirable vibrations or deflections and are computed based on real-time deviations from a desired trajectory or shape.
 	
 	The control force is defined as
@@ -538,6 +544,6 @@ Velocity and acceleration can be recovered at each time step using finite differ
 		\label{fig:control_forces}
 	\end{figure}
 	
-	\textbf{Explanation for Trotter:} The control force is calculated based on how much the beam is off from where you want it to be. This force is applied at a specific point on the beam, called the control node. Along with this force, a moment is created to control bending. Both are included in the beam’s equations of motion to guide its behavior.
+%	\textbf{Explanation for Trotter:} The control force is calculated based on how much the beam is off from where you want it to be. This force is applied at a specific point on the beam, called the control node. Along with this force, a moment is created to control ing. Both are included in the beam’s equations of motion to guide its behavior.
 	
 \end{document}
