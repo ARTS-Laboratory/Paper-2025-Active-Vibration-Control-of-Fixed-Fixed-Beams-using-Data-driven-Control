@@ -400,7 +400,7 @@
 	
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-\subsubsection{The time integration procedure}
+\subsubsection{The implicit time integration}
 	At each time step, the Newmark--Beta scheme computes the unknown displacement \( \mathit{\mathbf{w}}_{n+1} \), then updates acceleration and velocity using known values from the previous step. The method uses the following interpolation formulas:
 	\begin{align}
 		\mathit{\mathbf{w}}_{n+1} &= \mathit{\mathbf{w}}_n + \Delta t\, \dot{\mathit{\mathbf{w}}}_n + \frac{1}{2} \Delta t^2 \left[ (1 - 2\beta) \ddot{\mathit{\mathbf{w}}}_n + 2\beta \ddot{\mathit{\mathbf{w}}}_{n+1} \right], \\
@@ -440,38 +440,63 @@
 	
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-	\subsection{Central Difference Explicit Time Integration}
+	\subsubsection{Central Difference Explicit Time Integration}
 	
-	An alternative to implicit methods is the central difference method, which is an explicit integration scheme particularly suitable for problems involving impact or wave propagation. It assumes negligible damping or treats damping explicitly.
+	The central difference method is a second-order explicit time integration technique suitable for wave propagation and dynamic response problems. The update of displacement is given by:
+	\begin{equation}
+		\mathbf{w}_{n+1} = \Delta t^2 \mathbf{M}^{-1} \left[ \mathbf{f}_n - \mathbf{K} \mathbf{w}_n - \mathbf{C} \left( \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t} \right) \right] + 2\mathbf{w}_n - \mathbf{w}_{n-1},
+	\end{equation}
+	where \( \mathbf{C} = \alpha_R \mathbf{M} + \beta_R \mathbf{K} \) is the Rayleigh damping matrix. This formulation includes both stiffness and mass proportional damping contributions.
 	
-	Given the second-order system:
-	\begin{equation}
-		\mathbf{M} \ddot{\mathbf{w}} = \mathbf{f}(t) - \mathbf{K} \mathbf{w},
-	\end{equation}
-	the central difference formula updates the displacement as:
-	\begin{equation}
-		\mathbf{w}_{n+1} = \Delta t^2 \mathbf{M}^{-1} \left( \mathbf{f}_n - \mathbf{K} \mathbf{w}_n \right) + 2\mathbf{w}_n - \mathbf{w}_{n-1}.
-	\end{equation}
+	We proceed as follows:
 	
-	If damping is included using Rayleigh form:
+
+	Assume initial displacement \( \mathbf{w}_0 \), and velocity \( \dot{\mathbf{w}}_0 \). Compute the initial acceleration from the equation of motion:
 	\begin{equation}
-		\mathbf{C} = \alpha_R \mathbf{M} + \beta_R \mathbf{K},
-	\end{equation}
-	the damping force at time step \( n \) is approximated using backward difference in velocity:
-	\begin{equation}
-		\dot{\mathbf{w}}_n \approx \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t},
-	\end{equation}
-	which gives the damping term:
-	\begin{equation}
-		\mathbf{f}_{\text{damping}} = -\mathbf{C} \dot{\mathbf{w}}_n = - \left( \alpha_R \mathbf{M} + \beta_R \mathbf{K} \right) \left( \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t} \right).
+		\ddot{\mathbf{w}}_0 = \mathbf{M}^{-1} \left( \mathbf{f}_0 - \mathbf{C} \dot{\mathbf{w}}_0 - \mathbf{K} \mathbf{w}_0 \right).
 	\end{equation}
 	
-	Thus, the update equation with damping becomes:
+Using a Taylor expansion for a special start (explicit scheme has no \( \mathbf{w}_{-1} \)):
+	\begin{equation}
+		\mathbf{w}_1 = \mathbf{w}_0 + \Delta t \dot{\mathbf{w}}_0 + \frac{1}{2} \Delta t^2 \ddot{\mathbf{w}}_0.
+	\end{equation}
+	If \( \dot{\mathbf{w}}_0 = 0 \), this simplifies to:
+	\begin{equation}
+		\mathbf{w}_1 = \mathbf{w}_0 + \frac{1}{2} \Delta t^2 \ddot{\mathbf{w}}_0.
+	\end{equation}
+	
+For \( n \geq 1 \), we use the central difference recurrence:
 	\begin{equation}
 		\mathbf{w}_{n+1} = \Delta t^2 \mathbf{M}^{-1} \left[ \mathbf{f}_n - \mathbf{K} \mathbf{w}_n - \mathbf{C} \left( \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t} \right) \right] + 2\mathbf{w}_n - \mathbf{w}_{n-1}.
 	\end{equation}
 	
-	This scheme is conditionally stable, and the time step must satisfy the CFL (Courant–Friedrichs–Lewy) condition depending on the highest natural frequency to avoid numerical divergence.
+Velocity and acceleration can be recovered at each time step using finite differences:
+	\begin{align}
+		\dot{\mathbf{w}}_n &= \frac{\mathbf{w}_{n+1} - \mathbf{w}_{n-1}}{2\Delta t}, \\
+		\ddot{\mathbf{w}}_n &= \frac{\mathbf{w}_{n+1} - 2\mathbf{w}_n + \mathbf{w}_{n-1}}{\Delta t^2}.
+	\end{align}
+	
+	
+	It is important to note that explicit time integration methods are conditionally stable and require careful selection of the time step to maintain numerical stability. The stability criterion is typically governed by the following inequality:
+	:
+	
+	\begin{equation}
+		\Delta t < \frac{2}{\omega_{\max}},
+	\end{equation}
+	
+	where \( \omega_{\max} \) represents the highest natural frequency of the system. This value is directly associated with the largest eigenvalue of the matrix \( \mathbf{M}^{-1} \mathbf{K} \), where \( \mathbf{M} \) and \( \mathbf{K} \) are the global mass and stiffness matrices, respectively. If this condition is not met, the numerical solution may become unstable and diverge.
+	
+	
+%	\subsubsection{Explicit vs. Implicit Time Integration: Trade-offs and Applications}
+%	
+%	Time integration schemes in structural dynamics can broadly be classified into explicit and implicit methods, each offering distinct advantages and limitations. Explicit methods, such as the central difference scheme, compute the system's state at the next time step using only previously known values. As a result, they do not require the solution of a global system of equations at each time step, making them computationally attractive for large-scale problems with sparse matrices. This efficiency becomes particularly valuable when dealing with high-resolution finite element models where direct or iterative solvers for implicit schemes would be prohibitively expensive.
+%	
+%	However, explicit schemes are conditionally stable and require careful selection of a time step that satisfies a critical stability condition, typically dictated by the maximum natural frequency of the system. This limitation often necessitates the use of extremely small time steps, especially in stiff systems, which can result in high computational cost for long-duration simulations. Despite this, explicit methods are highly effective for problems dominated by short-duration, high-speed transients—such as impact loading, wave propagation, and shock dynamics—where the small time step aligns naturally with the physics of the problem.
+%	
+%	In contrast, implicit methods, such as the Newmark--Beta scheme with appropriate parameters, are unconditionally stable for linear problems and allow larger time steps without compromising numerical stability. However, this comes at the cost of solving a linear or nonlinear system of equations at every time step, which can be computationally demanding for large systems. Furthermore, implicit methods tend to damp out high-frequency modes unless specifically accounted for, making them less suitable for capturing sharp transients or high-frequency responses.
+%	
+%	In summary, the choice between explicit and implicit time integration depends on the problem characteristics. Explicit methods are preferred when dealing with large, sparse systems subject to high-speed, short-duration dynamics where accurate tracking of high-frequency content is essential. Implicit methods, on the other hand, are better suited for problems involving slower dynamics or those requiring long time simulations with moderate accuracy and stability demands.
+	
 	
 	
 	
