@@ -195,7 +195,7 @@ Keff = K_reduced + a1N * C_reduced + a0N * M_reduced;
 
 % impulse force imposing 
 f_dyn = zeros(length(w0), Nt+1);
-impulse_node = round(nElem/2) + 1;
+impulse_node = round(nElem/2) + 18;
 impulse_DOF  = 2; % vertical DOF (w)
 impulse_val  = 1000;   % N
 impulse_time = 0.001;  % 1 ms duration
