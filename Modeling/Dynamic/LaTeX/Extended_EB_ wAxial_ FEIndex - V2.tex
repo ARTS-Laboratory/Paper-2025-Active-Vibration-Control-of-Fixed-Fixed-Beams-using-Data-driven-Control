@@ -319,18 +319,88 @@
 
 %%% Beginning of the time integration section%%%%%%%%%
 	
-	\subsection*{Newmark--Beta Implicit Time Integration}
+	\subsection{Dynamic time integration}
 	
 	The Newmark--Beta method is a widely used implicit time integration scheme for solving second-order systems of the form:
 	\begin{equation}
 		\mathit{\mathbf{M}}\, \ddot{\mathit{\mathbf{w}}} + \mathit{\mathbf{C}}\, \dot{\mathit{\mathbf{w}}} + \mathit{\mathbf{K}}\, \mathit{\mathbf{w}} = \mathit{\mathbf{f}}(t),
 	\end{equation}
-	where \( \mathit{\mathbf{w}}, \dot{\mathit{\mathbf{w}}}, \ddot{\mathit{\mathbf{w}}} \) denote displacement, velocity, and acceleration vectors. The matrices \( \mathit{\mathbf{M}}, \mathit{\mathbf{C}}, \mathit{\mathbf{K}} \) are the mass, damping, and stiffness matrices. The damping matrix is often modeled using Rayleigh damping:
-	\begin{equation}
-		\mathit{\mathbf{C}} = \alpha_R \mathit{\mathbf{M}} + \beta_R \mathit{\mathbf{K}},
-	\end{equation}
-	where \( \alpha_R \) and \( \beta_R \) are mass- and stiffness-proportional damping coefficients.
+	where \( \mathit{\mathbf{w}}, \dot{\mathit{\mathbf{w}}}, \ddot{\mathit{\mathbf{w}}} \) denote displacement, velocity, and acceleration vectors. The matrices \( \mathit{\mathbf{M}}, \mathit{\mathbf{C}}, \mathit{\mathbf{K}} \) are the mass, damping, and stiffness matrices. The damping matrix is often modeled using Rayleigh damping.
 	
+	\subsubsection{Determination of Rayleigh Damping Coefficients}
+	
+	Rayleigh damping is modeled by a linear combination of the mass and stiffness matrices:
+	\begin{equation}
+		\mathbf{C} = \alpha_R \mathbf{M} + \beta_R \mathbf{K},
+	\end{equation}
+	where \( \alpha_R \) and \( \beta_R \) are the mass- and stiffness-proportional damping coefficients, respectively.
+	
+	To determine \( \alpha_R \) and \( \beta_R \), we specify the desired damping ratios \( \zeta_1 \) and \( \zeta_2 \) for two selected natural modes with angular frequencies \( \omega_1 \) and \( \omega_2 \). The damping ratio for each mode is defined as:
+	\begin{equation}
+		\zeta_i = \frac{\alpha_R}{2\omega_i} + \frac{\beta_R \omega_i}{2}, \quad i = 1, 2.
+	\end{equation}
+	
+	This yields the following system of linear equations:
+	\[
+	\begin{cases}
+		\zeta_1 = \dfrac{\alpha_R}{2\omega_1} + \dfrac{\beta_R \omega_1}{2}, \\\\
+		\zeta_2 = \dfrac{\alpha_R}{2\omega_2} + \dfrac{\beta_R \omega_2}{2}.
+	\end{cases}
+	\]
+	
+	This system can be rewritten in matrix form:
+	\begin{equation}
+		\begin{bmatrix}
+			\dfrac{1}{2\omega_1} & \dfrac{\omega_1}{2} \\\\
+			\dfrac{1}{2\omega_2} & \dfrac{\omega_2}{2}
+		\end{bmatrix}
+		\begin{bmatrix}
+			\alpha_R \\\\
+			\beta_R
+		\end{bmatrix}
+		=
+		\begin{bmatrix}
+			\zeta_1 \\\\
+			\zeta_2
+		\end{bmatrix}.
+	\end{equation}
+	
+	Let this system be denoted as \( \mathbf{A} \boldsymbol{x} = \boldsymbol{b} \), where:
+	\[
+	\mathbf{A} =
+	\begin{bmatrix}
+		\dfrac{1}{2\omega_1} & \dfrac{\omega_1}{2} \\\\
+		\dfrac{1}{2\omega_2} & \dfrac{\omega_2}{2}
+	\end{bmatrix},
+	\quad
+	\boldsymbol{x} =
+	\begin{bmatrix}
+		\alpha_R \\\\
+		\beta_R
+	\end{bmatrix},
+	\quad
+	\boldsymbol{b} =
+	\begin{bmatrix}
+		\zeta_1 \\\\
+		\zeta_2
+	\end{bmatrix}.
+	\]
+	
+	The damping coefficients are obtained by solving:
+	\begin{equation}
+		\begin{bmatrix}
+			\alpha_R \\\\
+			\beta_R
+		\end{bmatrix}
+		=
+		\mathbf{A}^{-1} \boldsymbol{b}.
+	\end{equation}
+	
+	This procedure ensures that the resulting damping matrix \( \mathbf{C} \) produces the desired damping ratios at the specified frequencies. The coefficient \( \alpha_R \) primarily affects low-frequency (inertial) damping, while \( \beta_R \) dominates in high-frequency (stiffness-driven) modes.
+	
+	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+\subsubsection{The time integration procedure}
 	At each time step, the Newmark--Beta scheme computes the unknown displacement \( \mathit{\mathbf{w}}_{n+1} \), then updates acceleration and velocity using known values from the previous step. The method uses the following interpolation formulas:
 	\begin{align}
 		\mathit{\mathbf{w}}_{n+1} &= \mathit{\mathbf{w}}_n + \Delta t\, \dot{\mathit{\mathbf{w}}}_n + \frac{1}{2} \Delta t^2 \left[ (1 - 2\beta) \ddot{\mathit{\mathbf{w}}}_n + 2\beta \ddot{\mathit{\mathbf{w}}}_{n+1} \right], \\
