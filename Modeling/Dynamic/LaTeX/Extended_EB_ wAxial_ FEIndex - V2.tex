@@ -439,6 +439,40 @@
 	The influence of Rayleigh damping is embedded directly in the matrix solve. The coefficient \( \alpha_R \) provides damping for lower-frequency (mass-dominated) modes, while \( \beta_R \) suppresses higher-frequency (stiffness-dominated) vibrations. This results in a stable and physically realistic solution, particularly in systems with broad frequency content.
 	
 	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+	\subsection{Central Difference Explicit Time Integration}
+	
+	An alternative to implicit methods is the central difference method, which is an explicit integration scheme particularly suitable for problems involving impact or wave propagation. It assumes negligible damping or treats damping explicitly.
+	
+	Given the second-order system:
+	\begin{equation}
+		\mathbf{M} \ddot{\mathbf{w}} = \mathbf{f}(t) - \mathbf{K} \mathbf{w},
+	\end{equation}
+	the central difference formula updates the displacement as:
+	\begin{equation}
+		\mathbf{w}_{n+1} = \Delta t^2 \mathbf{M}^{-1} \left( \mathbf{f}_n - \mathbf{K} \mathbf{w}_n \right) + 2\mathbf{w}_n - \mathbf{w}_{n-1}.
+	\end{equation}
+	
+	If damping is included using Rayleigh form:
+	\begin{equation}
+		\mathbf{C} = \alpha_R \mathbf{M} + \beta_R \mathbf{K},
+	\end{equation}
+	the damping force at time step \( n \) is approximated using backward difference in velocity:
+	\begin{equation}
+		\dot{\mathbf{w}}_n \approx \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t},
+	\end{equation}
+	which gives the damping term:
+	\begin{equation}
+		\mathbf{f}_{\text{damping}} = -\mathbf{C} \dot{\mathbf{w}}_n = - \left( \alpha_R \mathbf{M} + \beta_R \mathbf{K} \right) \left( \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t} \right).
+	\end{equation}
+	
+	Thus, the update equation with damping becomes:
+	\begin{equation}
+		\mathbf{w}_{n+1} = \Delta t^2 \mathbf{M}^{-1} \left[ \mathbf{f}_n - \mathbf{K} \mathbf{w}_n - \mathbf{C} \left( \frac{\mathbf{w}_n - \mathbf{w}_{n-1}}{\Delta t} \right) \right] + 2\mathbf{w}_n - \mathbf{w}_{n-1}.
+	\end{equation}
+	
+	This scheme is conditionally stable, and the time step must satisfy the CFL (Courant–Friedrichs–Lewy) condition depending on the highest natural frequency to avoid numerical divergence.
+	
 	
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
