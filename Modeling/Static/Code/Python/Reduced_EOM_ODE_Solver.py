@@ -1,43 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed May  7 15:17:17 2025
+Created on Thu May  8 10:21:36 2025
 
 @author: trott
-
-Beam Vibration Simulation using FEM and Impulse Response (Python)
-
-Description:
-------------
-This script simulates the dynamic response of a fixed-fixed Euler-Bernoulli beam 
-subjected to an impulsive transverse force using the Finite Element Method (FEM). 
-The beam is discretized into multiple elements with 3 degrees of freedom per node 
-(axial displacement, vertical displacement, and rotation). 
-
-Key Features:
--------------
-- Consistent mass and stiffness matrix assembly for axial and bending behavior.
-- Fixed boundary conditions applied to both beam ends.
-- Modal analysis performed to extract natural frequencies.
-- Rayleigh damping is constructed to match a 2% damping ratio on the first two modes.
-- An impulsive vertical force is applied at an internal node.
-- Equation of motion is solved using the `Radau` stiff ODE solver.
-- LU factorization is used to efficiently solve the mass matrix inverse repeatedly.
-- Final output shows vertical displacement at the midpoint node over time.
-
-Usage Notes:
-------------
-Due to the large system size and stiffness of the beam, this simulation may take
-significant time to run for high element counts (e.g., nElem = 50). Use a smaller
-value for interactive testing (e.g., nElem = 10) or run the full-resolution simulation
-on a machine with more computational resources.
-
-Dependencies:
--------------
-- numpy
-- matplotlib
-- scipy.linalg
-- scipy.integrate
-
 """
 
 import numpy as np
@@ -47,7 +12,7 @@ from scipy.integrate import solve_ivp
 from scipy.linalg import lu_factor, lu_solve
 
 # FEM parameters
-nElem = 50  # Full size
+nElem = 10  # Reduced
 E = 210e9
 A = 0.01
 I = 8.333e-6
@@ -118,7 +83,7 @@ impulse_time = 0.001
 lu_M, piv = lu_factor(M_red)
 
 # Define ODE function using LU solve
-def eom_lu_full(t, y):
+def eom_lu_small(t, y):
     n = len(M_red)
     u = y[:n]
     v = y[n:]
@@ -133,14 +98,14 @@ y0 = np.zeros(2 * len(freeDOF))
 t_span = (0, 0.1)
 t_eval = np.linspace(*t_span, 1001)
 
-# Solve using Radau
-sol_full = solve_ivp(eom_lu_full, t_span, y0, t_eval=t_eval, method='Radau')
+# Solve using Radau (stiff solver)
+sol_small = solve_ivp(eom_lu_small, t_span, y0, t_eval=t_eval, method='Radau')
 
 # Plot the midpoint vertical displacement
 plt.figure()
-plt.plot(sol_full.t, sol_full.y[impulse_dof_local,:], linewidth=2)
+plt.plot(sol_small.t, sol_small.y[impulse_dof_local,:], linewidth=2)
 plt.xlabel('Time (s)')
 plt.ylabel('Vertical displacement at midpoint (m)')
-plt.title('Dynamic response (nElem=50, Radau + LU)')
+plt.title('Dynamic response (nElem=10, Radau + LU)')
 plt.grid(True)
 plt.show()
