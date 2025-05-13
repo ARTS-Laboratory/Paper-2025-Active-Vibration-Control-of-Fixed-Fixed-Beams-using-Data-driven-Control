@@ -73,6 +73,7 @@ plot(x_nodes([nodeL, nodeR]), 1e3*w_static([nodeL, nodeR]), 'o', ...
 
 xlabel('node number', 'FontName', 'Times New Roman', 'FontSize', 11);
 ylabel('vertical deflection (mm)', 'FontName', 'Times New Roman', 'FontSize', 11);
+ylim([-0.7 0]);
 grid on; box on;
 print(gcf, fullfile(saveDir, 'static_deflection_moment1'), '-dpng', '-r300');
 
@@ -98,6 +99,7 @@ plot(x_nodes([nodeL, nodeR]), 1e3*w_static([nodeL, nodeR]), 'o', ...
      'MarkerSize', 6, 'MarkerFaceColor', colors(2,:), 'Color', colors(2,:));
 xlabel('node number', 'FontName', 'Times New Roman', 'FontSize', 11);
 ylabel('vertical deflection (mm)', 'FontName', 'Times New Roman', 'FontSize', 11);
+ylim([0 0.7]);
 grid on; box on;
 print(gcf, fullfile(saveDir, 'static_deflection_moment2'), '-dpng', '-r300');
 
@@ -401,8 +403,9 @@ disp('Performance Comparison:');
 % Metrics
 peak_free = max(abs(W_free(mid_dof,:)));
 peak_pd = max(abs(W_pd(mid_dof,:)));
-rms_a_free = rms(A_free(mid_dof,:));
-rms_a_pd = rms(A_pd(mid_dof,:));
+rms_window = t <= 0.015;
+rms_a_free = rms(A_free(mid_dof, rms_window));
+rms_a_pd   = rms(A_pd(mid_dof, rms_window));
 
 % Settling thresholds
 settle_thresh_free = 0.05 * peak_free;
@@ -436,6 +439,7 @@ end
 cond_Keff = cond(Keff);
 peak_improvement = (peak_free - peak_pd) / peak_free * 100;
 rms_improvement = (rms_a_free - rms_a_pd) / rms_a_free * 100;
+fprintf('DEBUG: RMS free = %.4f, RMS pd = %.4f\n', rms_a_free, rms_a_pd);
 
 if ~isnan(settle_free_ms) && ~isnan(settle_pd_ms) && settle_free_ms > 0
     settle_improvement = (settle_free_ms - settle_pd_ms) / settle_free_ms * 100;
@@ -458,87 +462,6 @@ else
 end
 fprintf('%-25s %-12.2f %-12.2f %-12.2f\n', 'RMS Accel (m/s^2)', ...
         rms_a_free, rms_a_pd, rms_improvement);
-
-%% ------------------------------------------------------------------------
-% CONTROL LOGIC AND PHYSICAL INTERPRETATION
-% -------------------------------------------------------------------------
-% The following section implements a Proportional-Derivative (PD) controller
-% to apply active vibration control using moment couples at rotational DOFs.
-% This control scheme mimics the action of piezoelectric actuators that apply
-% localized bending moments to suppress vibrations.
-
-% The main idea is to damp beam vibrations by applying control moments that
-% resist local curvature and angular velocity (i.e., rotational rate of change).
-% These moments are applied at two adjacent nodes on the beam, forming a 
-% moment couple. This is physically equivalent to the static study setup,
-% where opposing moments were applied at nodes 26 and 35.
-
-% -------------------------------------------------------------------------
-% FORCE MATRIX f_pd:
-% -------------------------------------------------------------------------
-% The control moment is implemented by modifying the global force matrix
-% f_pd(:,n+1), which stores the applied external forces (and moments) at
-% each time step. This matrix was initialized as a copy of f_dyn, which 
-% contains only the impulse force applied near midspan.
-
-% At every time step, we compute a control moment M_control, and apply it
-% as an equal and opposite pair of forces at the rotational DOFs of the
-% control nodes:
-%
-%   f_pd(idL, n+1) = f_pd(idL, n+1) - M_control;
-%   f_pd(idR, n+1) = f_pd(idR, n+1) + M_control;
-%
-% This ensures the net force is zero, but a bending moment is applied to 
-% alter the local curvature — effectively resisting beam deflection.
-
-% -------------------------------------------------------------------------
-% CONTROL LAW:
-% -------------------------------------------------------------------------
-% The control moment is computed using a PD law:
-%
-%   M_control = -Kp * (thetaR - thetaL) - Kd * (dthetaR - dthetaL);
-%
-% where:
-%   - (thetaR - thetaL) is the relative rotation (i.e., curvature)
-%   - (dthetaR - dthetaL) is the relative angular velocity (i.e., rate of bending)
-%
-% The proportional term (Kp) contributes a restoring moment to reduce curvature,
-% while the derivative term (Kd) adds damping by opposing angular velocity.
-
-% For pure damping behavior, Kp may be small or zero, and Kd is tuned to the
-% highest stable value found (e.g., 420), which resists oscillatory motion
-% without injecting instability.
-
-% -------------------------------------------------------------------------
-% ROLE OF INERTIA (Last-Step Acceleration):
-% -------------------------------------------------------------------------
-% Although the control moment is not explicitly a function of acceleration,
-% inertia is fully accounted for through the Newmark-Beta time integration
-% scheme, which uses the mass matrix (Mf) and the previous acceleration
-% A_pd(:,n) in computing the effective force:
-%
-%   Feff = f_pd(:,n+1)
-%        + Mf*(a0*W_pd(:,n) + a2*V_pd(:,n) + a3*A_pd(:,n))
-%        + Cf*(a1*W_pd(:,n) + a4*V_pd(:,n) + a5*A_pd(:,n));
-%
-% This equation ensures that the system dynamics incorporate inertia naturally.
-% The "last step inertia" (A_pd(:,n)) enters here as part of the internal
-% integration scheme, not directly in the control law.
-
-% This makes the simulation physically realistic: the beam resists motion
-% due to mass (inertia), damping, and stiffness — while the controller 
-% applies additional moments to reduce vibrations through feedback.
-
-% -------------------------------------------------------------------------
-% SUMMARY:
-% -------------------------------------------------------------------------
-% - Control is applied as moment couples at rotational DOFs, like in the static test.
-% - The control moment is calculated based on rotation and angular velocity.
-% - The force matrix f_pd is updated at each step to include these moments.
-% - Newmark-Beta time integration incorporates inertia from the previous step.
-% - The result is a physically accurate damping controller that reduces
-%   vibration amplitude and settling time of the beam under impulsive loading.
-
 
 % Helper function to print -- for NaNs
 function out = settle_free_ms_str(val)
