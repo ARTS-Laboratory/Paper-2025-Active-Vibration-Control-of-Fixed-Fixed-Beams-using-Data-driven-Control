@@ -244,3 +244,61 @@ ylabel('Acceleration at midpoint (m/s^2)');
 title('Acceleration response at midpoint (Newmark-Beta)');
 grid on;
 
+%%%%%%  ODE45%%%%%%%5
+%% Supplement: Time Integration using ODE15s (Comparison to Newmark-Beta)
+
+% Initial condition vector: [displacement; velocity]
+z0 = [w0; v0];
+nDOF_reduced = length(w0);
+
+% Define first-order ODE system: dz/dt = [v; M⁻¹(f - C*v - K*u)]
+rhs = @(t, z) [ ...
+    z(nDOF_reduced+1:end);  % velocity part
+    M_reduced \ ( ...
+        interp1(time, f_dyn', t, 'previous', 0)' - ...  % force as column vector
+        C_reduced * z(nDOF_reduced+1:end) - ...
+        K_reduced * z(1:nDOF_reduced) ...
+    )
+];
+
+% Set solver options (optional but recommended)
+opts = odeset('RelTol', 1e-5, 'AbsTol', 1e-8);
+
+% Run ODE15s (stiff solver)
+[t_ode, z_ode] = ode15s(rhs, [0 Tmax], z0, opts);
+
+% Split solution into displacement and velocity
+W_ode = z_ode(:, 1:nDOF_reduced)';              % Displacement history
+V_ode = z_ode(:, nDOF_reduced+1:end)';          % Velocity history
+
+% Optional: compute acceleration
+A_ode = M_reduced \ (interp1(time, f_dyn', t_ode', 'previous', 0)' - ...
+                     C_reduced * V_ode - ...
+                     K_reduced * W_ode);
+
+%% Plot: Comparison with Newmark-Beta Results
+
+% Plot Displacement at midpoint
+figure;
+plot(time, W(mid_dof,:), 'b-', 'LineWidth', 2); hold on;
+plot(t_ode, W_ode(mid_dof,:), 'r--', 'LineWidth', 2);
+xlabel('time (s)'); ylabel('displacement (m)');
+legend('newmark-beta', 'ODE15s');
+title('midpoint displacement comparison'); grid on;
+
+% Plot Velocity at midpoint
+figure;
+plot(time, V(mid_dof,:), 'b-', 'LineWidth', 2); hold on;
+plot(t_ode, V_ode(mid_dof,:), 'r--', 'LineWidth', 2);
+xlabel('time (s)'); ylabel('velocity (m/s)');
+legend('newmark-neta', 'ODE15s');
+title('midpoint velocity comparison'); grid on;
+
+% Plot Acceleration at midpoint
+figure;
+plot(time, A(mid_dof,:), 'b-', 'LineWidth', 2); hold on;
+plot(t_ode, A_ode(mid_dof,:), 'r--', 'LineWidth', 2);
+xlabel('time (s)'); ylabel('acceleration (m/s²)');
+legend('newmark-beta', 'ODE15s');
+title('midpoint acceleration comparison'); grid on;
+
