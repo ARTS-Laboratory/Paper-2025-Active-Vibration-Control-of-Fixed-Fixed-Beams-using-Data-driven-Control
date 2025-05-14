@@ -1,5 +1,4 @@
 clear; clc; close all;
-% Directory to save figures
 saveDir = 'C:\Users\trott\Dropbox\Conference Papers\In Progress\Roberts2025_IMECE\Latex\Figures';
 if ~exist(saveDir, 'dir')
     mkdir(saveDir);
@@ -8,11 +7,23 @@ end
 %% FEM Model Setup
 % nElem = 49; E = 210e9; A = 0.01; I = 8.333e-6; rho = 7850; L = 2;
 %nElem = 49; E = 210e9; width = 0.05; thickness = 0.005; rho = 7850; L = 1;
-nElem = 49; E = 1.8602e10; width = 0.0254; thickness = 0.0016002; rho = 515.379; L = 0.0889;
+nElem = 49; 
+E = 1.8602e10; 
+rho = 515.379; 
+width = 0.0254; 
+thickness = 0.0016002; 
+L = 0.0889;
+
 A = width * thickness; I = (width * thickness^3) / 12; 
 nNode = nElem + 1; dof_per_node = 3; totalDOF = nNode * dof_per_node;
 Le = L / nElem;
 nFrames = 50; colors = lines(nFrames);
+
+m_elem = rho * width * thickness * Le;  % ≈ 0.0006 kg
+g = 9.81;
+accel_g = 5000;
+a_shock = accel_g * g;  % 49,050 m/s²
+F_shock = m_elem * a_shock;  % ≈ 0.03 N
 
 % Element matrices
 ke_axial = (E*A/Le)*[1 -1; -1 1];
@@ -77,7 +88,6 @@ ylim([-0.8 0]);
 grid on; box on;
 print(gcf, fullfile(saveDir, 'static_deflection_moment1'), '-dpng', '-r300');
 
-
 F_static(DOF_thetaL) = +M0;  % flipped
 F_static(DOF_thetaR) = -M0;
 
@@ -103,11 +113,12 @@ ylim([0 0.8]);
 grid on; box on;
 print(gcf, fullfile(saveDir, 'static_deflection_moment2'), '-dpng', '-r300');
 
+
 %% Rayleigh damping
-zeta1 = 0.02; zeta2 = 0.02;
+zeta1 = 0.02; zeta2 = 0.05; % A higher zeta2 leads to more natural high-frequency damping
 [Phi,D] = eig(Kf,Mf); omega = sqrt(diag(D));
-A = [1/(2*omega(1)) omega(1)/2; 1/(2*omega(2)) omega(2)/2];
-ab = A\[zeta1; zeta2]; alpha = ab(1); beta = ab(2);
+Ar = [1/(2*omega(1)) omega(1)/2; 1/(2*omega(2)) omega(2)/2];
+ab = Ar\[zeta1; zeta2]; alpha = ab(1); beta = ab(2);
 Cf = alpha*Mf + beta*Kf;
 
 %% Time Integration Setup
@@ -123,13 +134,19 @@ mid_dof_global = (impulse_node-1)*dof_per_node + 2;
 mid_dof = find(freeDOF==mid_dof_global);
 
 f_dyn = zeros(nDOF_f, Nt+1);
-impulse_val = 1000;
+impulse_val = 30;
 
 % Apply impulse starting at 0.1 ms (0.0001 s)
 impulse_start_time = 0.005;  % seconds
-impulse_duration = 0.001;     % impulse lasts for 1 ms
+impulse_duration = 0.0001;     % impulse lasts for 1 ms
 start_idx = round(impulse_start_time / dt);
 num_impulse_steps = round(impulse_duration / dt);
+
+% impulse_val = F_shock;  % ≈ 0.03 N
+% impulse_duration = 0.0001;  % 100 µs
+% start_idx = round(impulse_start_time / dt);
+% num_impulse_steps = round(impulse_duration / dt);
+% f_dyn(mid_dof, start_idx : start_idx + num_impulse_steps - 1) = impulse_val;
 
 % Apply impulse to f_dyn starting at start_idx
 f_dyn(mid_dof, start_idx : start_idx + num_impulse_steps - 1) = impulse_val;
@@ -195,8 +212,8 @@ end
 % Kp = best_pid.Kp;
 % Kd = best_pid.Kd;
 % Ki = best_pid.Ki;
-Kp = 0.117;
-Kd = 0.000075;      
+Kp = 0.1;
+Kd = 0.00015;      
 Ki = 0.01;
 fprintf('Using optimal PID gains: Kp = %.2e, Kd = %.2e, Ki = %.2e\n', Kp, Kd, Ki);
 
@@ -276,16 +293,39 @@ plot(1e3 * t, 1e3 * W_free(mid_dof,:), 'LineWidth', 1); hold on;
 plot(1e3 * t, 1e3 * W_pid(mid_dof,:), 'LineWidth', 1);
 xlabel('time (ms)', 'FontName', 'Times New Roman', 'FontSize', 11);
 ylabel('midpoint displacement (mm)', 'FontName', 'Times New Roman', 'FontSize', 11);
-legend({'uncontrolled', 'PID-controlled'}, 'FontName', 'Times New Roman', 'FontSize', 9);
-ylim([-25 45]);
+legend({'uncontrolled', 'PID-controlled'}, 'FontName', 'Times New Roman', 'FontSize', 11);
+ylim([-0.45 0.45]);
 grid on; box on;
 print(gcf, fullfile(saveDir, 'displacement_comparison_pid'), '-dpng', '-r300');
+
+%% Plot Acceleration Comparison
+A_free_g = A_free(mid_dof,:) / 9.81;
+A_pid_g  = A_pid(mid_dof,:) / 9.81;
+
+figure('Units','inches','Position',[1 1 3.6 2.0]);
+plot(1e3 * t, A_free_g, 'LineWidth', 1); hold on;
+plot(1e3 * t, A_pid_g, 'LineWidth', 1);
+
+xlabel('time (ms)', 'FontName', 'Times New Roman', 'FontSize', 11);
+ylabel('midpoint acceleration (g)', 'FontName', 'Times New Roman', 'FontSize', 11);
+legend({'uncontrolled', 'PID-controlled'}, 'FontName', 'Times New Roman', 'FontSize', 9);
+
+% Set Y-limits manually if needed
+ylim([-5000 5000]);
+
+% Fix Y-axis tick labels to show plain numbers
+yticks(-5000:1000:5000);  % Change spacing if needed
+yticklabels(arrayfun(@num2str, -5000:1000:5000, 'UniformOutput', false));
+
+grid on; box on;
+set(gca, 'FontName', 'Times New Roman', 'FontSize', 11, 'LineWidth', 1);
 
 %% Plot PID Control Moment
 figure('Units','inches','Position',[1 1 3.6 2.0]);
 plot(1e3 * t(1:Nt), M_record_pid, 'LineWidth', 1);
 xlabel('time (ms)', 'FontName', 'Times New Roman', 'FontSize', 11);
 ylabel('control moment (Nm)', 'FontName', 'Times New Roman', 'FontSize', 11);
+ylim([-0.045 0.045]);
 grid on; box on;
 print(gcf, fullfile(saveDir, 'control_moment_pid'), '-dpng', '-r300');
 
@@ -316,7 +356,7 @@ end
 
 xlabel('node number', 'FontName', 'Times New Roman', 'FontSize', 11);
 ylabel('vertical deflection (mm)', 'FontName', 'Times New Roman', 'FontSize', 11);
-ylim([-15 30]);
+ylim([-0.3 0.5]);
 grid on; box on;
 set(gca, 'FontName', 'Times New Roman', 'FontSize', 11, 'LineWidth', 1);
 
@@ -329,9 +369,8 @@ cb.TickLabels = arrayfun(@(i) sprintf('%.0f', 1e3 * t_hist(frame_idx(i))), ...
 cb.Label.String = 'time scale (ms)';
 cb.Label.FontName = 'Times New Roman';
 cb.Label.FontSize = 11;
-
-% Save
 print(gcf, fullfile(saveDir, 'beam_shape_over_time_free_colormap'), '-dpng', '-r300');
+
 
 %% Performance Metrics
 disp('Performance Comparison:');
