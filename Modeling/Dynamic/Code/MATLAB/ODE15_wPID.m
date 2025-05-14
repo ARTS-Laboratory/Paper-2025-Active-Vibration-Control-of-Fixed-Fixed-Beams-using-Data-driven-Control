@@ -44,7 +44,7 @@ Kf = K(freeDOF,freeDOF); Mf = M(freeDOF,freeDOF);
 F_static = zeros(totalDOF, 1);
 
 % Define same moment couple as in control: Nodes 20 and 30
-nodeL = 18; nodeR = 32;
+nodeL = 16; nodeR = 34;
 DOF_thetaL = (nodeL - 1)*dof_per_node + 3;
 DOF_thetaR = (nodeR - 1)*dof_per_node + 3;
 
@@ -73,7 +73,7 @@ plot(x_nodes([nodeL, nodeR]), 1e3*w_static([nodeL, nodeR]), 'o', ...
 
 xlabel('node number', 'FontName', 'Times New Roman', 'FontSize', 11);
 ylabel('vertical deflection (mm)', 'FontName', 'Times New Roman', 'FontSize', 11);
-ylim([-0.7 0]);
+ylim([-0.8 0]);
 grid on; box on;
 print(gcf, fullfile(saveDir, 'static_deflection_moment1'), '-dpng', '-r300');
 
@@ -99,7 +99,7 @@ plot(x_nodes([nodeL, nodeR]), 1e3*w_static([nodeL, nodeR]), 'o', ...
      'MarkerSize', 6, 'MarkerFaceColor', colors(2,:), 'Color', colors(2,:));
 xlabel('node number', 'FontName', 'Times New Roman', 'FontSize', 11);
 ylabel('vertical deflection (mm)', 'FontName', 'Times New Roman', 'FontSize', 11);
-ylim([0 0.7]);
+ylim([0 0.8]);
 grid on; box on;
 print(gcf, fullfile(saveDir, 'static_deflection_moment2'), '-dpng', '-r300');
 
@@ -195,8 +195,8 @@ end
 % Kp = best_pid.Kp;
 % Kd = best_pid.Kd;
 % Ki = best_pid.Ki;
-Kp = 0.2;
-Kd = 0.00007;      
+Kp = 0.117;
+Kd = 0.000075;      
 Ki = 0.01;
 fprintf('Using optimal PID gains: Kp = %.2e, Kd = %.2e, Ki = %.2e\n', Kp, Kd, Ki);
 
