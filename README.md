@@ -13,7 +13,7 @@ The finite element model captures axial, transverse, and rotational dynamics usi
 
 ## Simulation Framework
 
-![Figure 1](Analysis/Figures/FFB_Figure.png)
+![Figure 1](Analysis/Figures/smallFFB_Figure.png)
 
 **Figure 1:** Visualization of the fixed-fixed beam FEM.
 
