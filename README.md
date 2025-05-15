@@ -19,7 +19,7 @@ The finite element model captures axial, transverse, and rotational dynamics usi
 
 ![Figure 2](Analysis/Figures/ControlForces_Figure.png)
 
-**Figure 2:**and control moment application via surface-actuated moment couples
+**Figure 2:** Visualization of control moment application via surface-actuated moment couples.
 
 - **Material:** FR4 composite (approximated)
 - **Beam Geometry:** 88.90 mm (length) × 25.40 mm (width) × 1.60 mm (thickness)
